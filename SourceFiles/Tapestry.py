@@ -528,6 +528,7 @@ class prompt(template):
         buttons_text_tuples.append((LoadBt, None))
 
         #_____Graphics_for_directories_____
+        #_____FIX_TO_RELATIVE_PATH______#
         def display_directory_items(directory_path: str = r"C:\Users\rasce\OneDrive\Počítač\projects\Python\PixelEditor\Gallery") -> None:
             # Draws the contents of directory at <directory_path> on Propmt component
             def fileBtFn():
