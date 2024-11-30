@@ -1,0 +1,9 @@
+{
+    "Paths": {
+        "Home": "C:\\Users\\rasce\\OneDrive\\projects\\Python\\PixelEditor",
+        "SaveDir": "Gallery",
+        "LoadDir": "Gallery"
+    },
+    "Design": "Light",
+    "AutoSave": 1000000
+}
