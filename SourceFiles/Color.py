@@ -27,5 +27,8 @@ class color_rgba(color_rgb):
     def toTuple(self):
         return (self.r, self.g, self.b, self.a)
     
+    def toBGRA(self) -> 'color_rgba':
+        return color_rgba(self.b, self.g, self.r, self.a)
+    
     def __add__(self, color):
         return color_rgba(self.r, self.g, self.b, maxA(self.a + color.a))

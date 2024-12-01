@@ -22,7 +22,7 @@ def build(gridObject: list[list[color_rgba]], path, name) -> None:
     for y in range(height):
         row = []
         for x in range(width):
-            row.append(numpy.array(gridObject[y][x].toTuple()))
+            row.append(numpy.array(gridObject[y][x].toBGRA().toTuple()))
         numpyGrid.append(numpy.array(row))
     
     numpyGrid = numpy.array(numpyGrid)
