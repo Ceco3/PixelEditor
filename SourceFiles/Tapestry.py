@@ -26,14 +26,13 @@ def build(gridObject: list[list[color_rgba]], path, name) -> None:
         numpyGrid.append(numpy.array(row))
     
     numpyGrid = numpy.array(numpyGrid)
-    print(numpyGrid)
 
-    print(path + "\{}".format(name) + ".png")
     cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
 
 def load(path):
     
-    prompt.load_prompt(None, (Window.winX / 2 - 250, Window.winY / 2 - 175), 500, 350, color_rgb(170, 170, 170), color_rgb(90, 30, 40))
+    ret_info, _ = prompt.load_prompt(None, (Window.winX / 2 - 250, Window.winY / 2 - 175), 500, 350, color_rgb(170, 170, 170), color_rgb(90, 30, 40))
+    path = ret_info[0]
 
     if ".png" not in path:
         bgra_content = cv2.imread(path + ".png", -1)
@@ -42,7 +41,6 @@ def load(path):
 
     if bgra_content is None:
         # Pop up Ideally
-        print("Failed to load image")
         return Canvas.lDict[Mouse.layer_selected].grid
 
     gridObject = []
@@ -125,8 +123,7 @@ class button(component):
     def onClick(self):
         self.stats["f"] = not self.stats["f"]
         if self.attached is not None:
-            print("attached call")
-            self.attached()
+            self.attached(self)
         if self.bound != None and self.bound[0] == 1:
             FunctionBundle.operate(self, Mouse)
         self.draw()
@@ -354,7 +351,6 @@ class textBt(button):
 
     def onClick(self):
         super().onClick()
-        print(self.stats["txt"])
         if self.toggle:
             pygame.key.stop_text_input()
             if self.bound != None:
@@ -499,12 +495,11 @@ class prompt(template):
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if not self.contains(Mouse.position):
-                    print(Mouse.position)
                     continue
                 self.onClick()
 
     def retrieve(self):
-        return (self.info_buffer, self.identifier)
+        return(self.info_buffer, self.identifier)
 
     def kill(self):
         del tDict[-1]
@@ -515,11 +510,13 @@ class prompt(template):
         buttons_text_tuples = []
         attached_functions = []
 
-        def CloseFn():
+        def CloseFn(BtObject: button):
             self.kill()
 
-        def LoadFn():
-            pass
+        def LoadFn(BtObject: button):
+            if self.info_buffer != []:
+                self.kill()
+                self.doRetrieve = True
 
         CloseBt = button((10, height - 40), 0, 90, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200), "close", (11, 10))
         CloseBt.attach(CloseFn)
@@ -529,12 +526,16 @@ class prompt(template):
         LoadBt.attach(LoadFn)
         buttons_text_tuples.append((LoadBt, None))
 
-        #_____Graphics_for_directories_____
-        #_____FIX_TO_RELATIVE_PATH______#
+        #_____Graphics_for_directories_____#
         def display_directory_items(directory_path: str = "./Gallery") -> None:
             # Draws the contents of directory at <directory_path> on Propmt component
-            def fileBtFn():
-                return self.stats["txt"] 
+
+            def fileBtFn(BtObject: button):
+                if self.info_buffer == []:
+                    self.info_buffer.append(directory_path + "\{}".format(BtObject.stats["txt"]))
+                else:
+                    self.info_buffer[0] = directory_path + "\{}".format(BtObject.stats["txt"])
+
             with os.scandir(directory_path) as folder:
                 for i, item in enumerate(list(os.scandir(directory_path))):
                     if item.name.startswith('.') or not item.is_file():
@@ -543,11 +544,17 @@ class prompt(template):
                                                     item.name, (11, 10))
                     fileBt.attach(fileBtFn)
                     buttons_text_tuples.append((fileBt, None))
+            
+            return
+        #__________________________________#
                     
         attached_functions.append(display_directory_items)
 
         Prompt = prompt(postition, Window.winX, width, Window.winY, height, color, frame_color, \
                         buttons_text_tuples, attached_functions, display_directory_items, LOAD_ID)
         self = Prompt
-        Prompt.selected_path = None
+        self.doRetrieve = False
         Prompt.prompt_loop()
+        if self.doRetrieve:
+            return self.retrieve()
+        return (None, self.identifier)
