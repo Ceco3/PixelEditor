@@ -12,7 +12,7 @@ import cv2, numpy
 import pygame
 import sys, os
 
-def build(gridObject, path, name) -> None:
+def build(gridObject: list[list[color_rgba]], path, name) -> None:
     "Builds the image (as specified by Project settings)"
     height = len(gridObject)
     width = len(gridObject[0])
@@ -22,11 +22,13 @@ def build(gridObject, path, name) -> None:
     for y in range(height):
         row = []
         for x in range(width):
-            row.append(numpy.array(gridObject[y][x]))
+            row.append(numpy.array(gridObject[y][x].toTuple()))
         numpyGrid.append(numpy.array(row))
     
     numpyGrid = numpy.array(numpyGrid)
+    print(numpyGrid)
 
+    print(path + "\{}".format(name) + ".png")
     cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
 
 def load(path):
@@ -529,16 +531,19 @@ class prompt(template):
 
         #_____Graphics_for_directories_____
         #_____FIX_TO_RELATIVE_PATH______#
-        def display_directory_items(directory_path: str = r"C:\Users\rasce\OneDrive\Počítač\projects\Python\PixelEditor\Gallery") -> None:
+        def display_directory_items(directory_path: str = "./Gallery") -> None:
             # Draws the contents of directory at <directory_path> on Propmt component
             def fileBtFn():
                 return self.stats["txt"] 
-            for i, item in enumerate(list(os.listdir(directory_path))):
-                fileBt = button((10, 50 + i * 40), i + 2, 300, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200), \
-                                                   item, (11, 10))
-                fileBt.attach(fileBtFn)
-                buttons_text_tuples.append((fileBt, None))
-                
+            with os.scandir(directory_path) as folder:
+                for i, item in enumerate(list(os.scandir(directory_path))):
+                    if item.name.startswith('.') or not item.is_file():
+                        continue
+                    fileBt = button((10, 50 + i * 40), i + 2, 300, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200), \
+                                                    item.name, (11, 10))
+                    fileBt.attach(fileBtFn)
+                    buttons_text_tuples.append((fileBt, None))
+                    
         attached_functions.append(display_directory_items)
 
         Prompt = prompt(postition, Window.winX, width, Window.winY, height, color, frame_color, \
