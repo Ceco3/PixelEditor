@@ -39,7 +39,7 @@ def count_pixels(line):
         length += 2
     return length
 
-def make_word(word: str, color: tuple[int, int, int]):
+def make_word(word: str, color: tuple[int, int, int]) -> pygame.Surface:
     color_surf.fill(color)
     images = []
     for letter in word:
