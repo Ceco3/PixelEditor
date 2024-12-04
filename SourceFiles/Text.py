@@ -1,5 +1,5 @@
 import pygame
-"Init Pygame in Main"
+import os
 
 
 anomalies = {
@@ -43,6 +43,10 @@ def make_word(word: str, color: tuple[int, int, int]) -> pygame.Surface:
     color_surf.fill(color)
     images = []
     for letter in word:
+        if char_converter(letter.capitalize()) not in [char.replace(".png", "") for char in os.listdir("Alphabet")]:
+            print("early skip")
+            print(letter, end=' '), print(word)
+            continue
         if letter.isupper():
             letter_im = pygame.image.load("Alphabet\{letter}.png".format(letter = char_converter(letter.capitalize()))).convert_alpha()
             letter_im.blit(overlay_surf, (0, 0), special_flags=pygame.BLEND_MULT)

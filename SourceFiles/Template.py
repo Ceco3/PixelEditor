@@ -63,7 +63,8 @@ class component:
         for index in range(min(list(self.components.keys())), highest + 1):
             if not self.components[index].contains(localMousePos):
                 continue
-            self.components[index].onClick()   
+            if self.components[index].onClick(): # Calls onClicks + checks if
+                break                            # the cycle should break
 
     def draw(self):
         self.surf.fill(self.stats["c"])

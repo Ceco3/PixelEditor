@@ -26,17 +26,3 @@ class registry:
 Registry = registry()
 
 #  <3
-
-class user_variables:
-    def __init__(self) -> None:
-        self.variables = {"imageName": "DefaultName",
-                          "saveDir": None,
-                          "loadDir": None}
-
-    def Set(self, variable, value):
-        self.variables[variable] = value
-
-    def Get(self, variable):
-        return self.variables[variable]
-    
-User_variables = user_variables()

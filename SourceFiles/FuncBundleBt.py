@@ -1,4 +1,3 @@
-from .Meta import User_variables
 from .Canvas import Reflect
 from .Mouse import Mouse
 
@@ -20,9 +19,9 @@ class function_bundle:
         }
 
         self.args = {
-            0 : ["imageName", scheme("stats", "txt")],
-            1 : ["saveDir", scheme("stats", "txt")],
-            2 : ["loadDir", scheme("stats", "txt")],
+            0 : ["ImageName", scheme("stats", "txt")],
+            1 : ["SaveDir", scheme("stats", "txt")],
+            2 : ["LoadDir", scheme("stats", "txt")],
             3 : [scheme("layer_selected", None)]
         }
 

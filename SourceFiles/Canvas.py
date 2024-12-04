@@ -71,8 +71,8 @@ class layer:
 
 
 class canvas(template):
-    def __init__(self, position, screen_w, width, screen_h, height, pix_dim) -> None:
-        super().__init__(position, screen_w, width, screen_h, height, color_rgb(0, 0, 0), color_rgb(50, 50, 50))
+    def __init__(self, position, screen_w, width, screen_h, height, pix_dim, override = None) -> None:
+        super().__init__(position, screen_w, width, screen_h, height, color_rgb(0, 0, 0), color_rgb(50, 50, 50), override)
         self.pix_w = pix_dim[0]
         self.pix_h = pix_dim[1]
         self.lDict: dict[int, layer] = {}
@@ -148,10 +148,16 @@ class canvas(template):
 
 Canvas = canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, \
                 Settings.Get("Project", "CanvasMeta"))
-#___________________Canvas_Bundle_Functions___________________#
 
-def Reflect(layers: list[int]):
-    for layer_ in layers:
+def rebuild_canvas(position: list[int], screen_w, width, screen_h, height, pix_dim: list[int]):
+    print("rebuild called")
+    Canvas = canvas(position, screen_w, width, screen_h, height, pix_dim, 0)
+#___________________Canvas_Attach_Functions___________________#
+
+def Reflect(BtObject):
+    for layer_ in Canvas.lDict.keys():
+        if layer_ == 0:
+            continue
         if Canvas.lDict[layer_].pix_w % 2 == 1:
             new_grid = []
             for i in range(Canvas.lDict[layer_].pix_h):
@@ -257,7 +263,5 @@ class bucket(tool):
                 if (x + j, y) not in active:
                     active.append((x + j, y))
             active.pop(0)
-
-        gridOb[y][x].show()
 
 Bucket = bucket()

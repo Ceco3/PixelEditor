@@ -2,8 +2,7 @@ from .Template import template, component, cmax, tDict
 from .Color import toRgba, color_rgba, color_rgb
 from .Text import make_word
 from .Canvas import Bucket, Pencil, Canvas
-from .Meta import Updater, Registry, User_variables
-from .FuncBundleBt import FunctionBundle
+from .Meta import Updater, Registry
 from .Mouse import Mouse
 from .ComF import Lerp
 from .Window import Window, Clock
@@ -29,7 +28,7 @@ def build(gridObject: list[list[color_rgba]], path, name) -> None:
 
     cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
 
-def load(path):
+def load():
     
     ret_info, _ = prompt.load_prompt(None, (Window.winX / 2 - 250, Window.winY / 2 - 175), 500, 350, color_rgb(170, 170, 170), color_rgb(90, 30, 40))
     if ret_info is None:
@@ -119,7 +118,6 @@ class button(component):
         self.overlaySurf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
         self.icon = None
         self.master = None
-        self.bound = None # (Older) See function_bundle class in FuncBundleBt.py
         self.attached = None # Newer version of bound (See <attach> method)
 
     def loadIcon(self, iconPath):
@@ -139,13 +137,13 @@ class button(component):
         self.surf.blit(self.overlaySurf, (0, 0))
 
     def onClick(self):
+        break_click_loop = False
         self.stats["f"] = not self.stats["f"]
         if self.attached is not None:
-            self.attached(self)
-        if self.bound != None and self.bound[0] == 1:
-            FunctionBundle.operate(self, Mouse)
+            break_click_loop = self.attached(self)
         self.draw()
         self.master.draw()
+        return break_click_loop
 
     def attach(self, func):
         "Attach a function <func> to button, the function will be called in the onClick method"
@@ -371,8 +369,8 @@ class textBt(button):
         super().onClick()
         if self.toggle:
             pygame.key.stop_text_input()
-            if self.bound != None:
-                FunctionBundle.operate(self, self)
+            if self.attached is not None:
+                self.attached(self)
         if not self.toggle:
             pygame.key.start_text_input()
         self.toggle = not self.toggle
@@ -584,6 +582,8 @@ class prompt(template):
                         del self.panel.components[i]
                 self.currLoadDir = "."
                 self.attached_functions[0](self) # Calls load_prompt_graphics (this method)
+                return True # The panel.component dict was changed from inside the onClick for-loop,
+                            # So we have to signal it to break the cycle (Implement other soln?)
 
         def dirBtFn(BtObject: button):
             left, _, right = Mouse.state["LWR"]
@@ -592,7 +592,8 @@ class prompt(template):
                     if i > 1:
                         del self.panel.components[i]
                 self.currLoadDir = self.currLoadDir + "/" + BtObject.stats["txt"]
-                self.attached_functions[0](self) 
+                self.attached_functions[0](self)
+                return True
 
 
         self.Bt_Tx_tuples = self.Bt_Tx_tuples[:2]
@@ -617,6 +618,8 @@ class prompt(template):
                         iconPath = "./Icons/VISION.png"
                     elif ".py" in item.name:
                         iconPath = "./Icons/Python.png"
+                    elif ".json" in item.name:
+                        iconPath = "./Icons/Jason.png"
                     else:
                         iconPath = "./Icons/Empty.png"
                 if item.is_dir():
@@ -627,3 +630,4 @@ class prompt(template):
                 self.Bt_Tx_tuples.append((fileBt, fileIcon))
         
         self.populate_panel()
+        # print(len(self.panel.components))

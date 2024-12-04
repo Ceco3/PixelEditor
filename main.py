@@ -1,13 +1,12 @@
 import pygame
 import sys
 
-from SourceFiles.Canvas import Canvas, Pencil, Bucket
+from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rebuild_canvas
 from SourceFiles.Color import color_rgba, color_rgb
 from SourceFiles.Tapestry import pallete, layer_mngr, saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, \
      textBt, BUILD, build, LOAD, load, NEWLAYER, DELLAYER, settings, popupBt, text, AUTOSAVE, AUTOSAVE_EV, BUILD_EV, prompt
 from SourceFiles.Template import template, component, tDict, SwitchIn_tDict
-from SourceFiles.Meta import Updater, Registry, User_variables
-from SourceFiles.FuncBundleBt import FunctionBundle
+from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
@@ -41,15 +40,41 @@ click_ev = pygame.event.Event(click)
 #___SETTINGS___#
 Settings_ = settings((400, 150), Window.winX, 150, Window.winY, 60, color_rgb(120, 120, 120), color_rgb(70, 70, 70))
 NameBt = textBt((10, 10), 0, 400, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (11, 10))
-FunctionBundle.bind(NameBt, 0, 0)
+def NameBtFn(NameBt: button):
+    Settings.Set("Project", "Name", NameBt.stats["txt"])
+NameBt.attach(NameBtFn)
 NameTxt = text((420, 10), 1, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "project title", textPos = (0, 10))
 SaveDirBt = textBt((10, 50), 2, 400, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (11, 10))
 SaveDirTxt = text((420, 50), 3, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "save directory", textPos = (0, 10))
-FunctionBundle.bind(SaveDirBt, 0, 1)
+def SaveDirBtFn(SaveDirBt: button):
+    Settings.Set("User", ["Paths", "SaveDir"], SaveDirBt.stats["txt"])
+SaveDirBt.attach(SaveDirBtFn)
+CanvasXBt = textBt((10, 90), 4, 30, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (7, 10))
+CanvasXBtTxt = text((50, 90), 5, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "canvas width", textPos = (0, 10))
+CanvasYBt = textBt((10, 130), 6, 30, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (7, 10))
+CanvasYBtTxt = text((50, 130), 7, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "canvas height", textPos = (0, 10))
+# These two functions are almost exactly the same (you might wanna do something about it) ((or you can't))
+def CanvasXBtFn(CanvasXBt: button):
+    dimensions = Settings.Get("Project", "CanvasMeta")
+    dimensions[0] = int(CanvasXBt.stats["txt"])
+    Settings.Set("Project", "CanvasMeta", dimensions)
+    rebuild_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
+def CanvasYBtFn(CanvasYBt: button):
+    dimensions = Settings.Get("Project", "CanvasMeta")
+    dimensions[1] = int(CanvasXBt.stats["txt"])
+    Settings.Set("Project", "CanvasMeta", dimensions)
+    rebuild_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
+CanvasXBt.attach(CanvasXBtFn)
+CanvasYBt.attach(CanvasXBtFn)
 Settings_.components[0].link_component(NameBt)
 Settings_.components[0].link_component(NameTxt)
 Settings_.components[0].link_component(SaveDirBt)
 Settings_.components[0].link_component(SaveDirTxt)
+Settings_.components[0].link_component(CanvasXBt)
+Settings_.components[0].link_component(CanvasXBtTxt)
+Settings_.components[0].link_component(CanvasYBt)
+Settings_.components[0].link_component(CanvasYBtTxt)
+
 
 #___CANVAS___#
 LyrM = layer_mngr([10, 310], 1, 230, 200, color_rgb(170, 170, 170), Canvas.lDict)
@@ -75,7 +100,7 @@ VisBt = visBt((130, 10), 2, 50, 50, color_rgb(60, 60, 60), color_rgb(100, 100, 1
 VisBt.loadIcon("Icons\VISION.png")
 ReflectBt = button((10, 70), 3, 50, 50, color_rgb(60, 60, 60), color_rgb(100, 100, 100), color_rgb(0, 0, 0), "")
 ReflectBt.loadIcon("Icons\Reflect.png")
-FunctionBundle.bind(ReflectBt, 1, 3)
+ReflectBt.attach(Reflect)
 
 Garage.new_component((10, 10), 280, 300, color_rgb(170, 170, 170))
 Garage.components[0].link_component(BucketBt)
@@ -129,10 +154,12 @@ while True:
                     continue
                 tDict[index].onClick()
         if event.type == BUILD:
-            build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", "Paths")["SaveDir"], User_variables.Get("imageName"))
+            print(Settings.Get("User", "Paths")["SaveDir"])
+            print(Settings.Get("Project", "Name"))
+            build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", "Paths")["SaveDir"], Settings.Get("Project", "Name"))
             Settings.Set("Project", "Canvas", Canvas.get_raw())
         if event.type == LOAD:
-            Canvas.lDict[Mouse.layer_selected].grid = load(Settings.Get("User", "Paths")["LoadDir"])
+            Canvas.lDict[Mouse.layer_selected].grid = load()
             Canvas.lDict[Mouse.layer_selected].draw()
             LyrM.draw()
         if event.type == AUTOSAVE:

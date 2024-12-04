@@ -43,8 +43,19 @@ def load_specified_settings(name):
 
 
 #___accessories___#
-def Set(settings_name: str, attr: str, val):
-    setattr(settings_object_dict[settings_name][0], attr, val)
+def Set(settings_name: str, attrs: list[str] | str, val):
+    if isinstance(attrs, str):
+        setattr(settings_object_dict[settings_name][0], attrs, val)
+        return
+    if len(attrs) == 1:
+        setattr(settings_object_dict[settings_name][0], attrs[0], val)
+        return
+    if len(attrs) == 2:
+        dct = Get(settings_name, attrs[0])
+        dct[attrs[1]] = val
+        setattr(settings_object_dict[settings_name][0], attrs[0], dct)
+        return
+    print("I'm sorry I don't support this yet :( (Message called from Set in Settings)")
 
 def Get(settings_name: str, attr: str):
     return getattr(settings_object_dict[settings_name][0], attr)
@@ -52,10 +63,14 @@ def Get(settings_name: str, attr: str):
 settings_object_dict = load_all_settings('Settings')
 # Fix Home Path
 
+#__Wiev_of_<settings_object_dict>_example__#
+#
+#{ "User"    :  (<__main__.User object at 0x000001E6B86CA250>, <class '__main__.User'>)       
+#  "Project" : (<__main__.Project object at 0x000001DF64B4CD50>, <class '__main__.Project'>)}
 
 #___USE___#
 # class_object_dict["User"][0].deep_show()
-# set_attribute("User", "Design", "Moss")
 # save_specified_settings("User")
 # load_specified_settings("User")
-# class_object_dict["User"][0].deep_show()
+# settings_object_dict["User"][0].deep_show()
+# print(settings_object_dict["User"][0].Paths)
