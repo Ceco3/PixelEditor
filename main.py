@@ -3,14 +3,14 @@ import sys
 
 from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rebuild_canvas
 from SourceFiles.Color import color_rgba, color_rgb
-from SourceFiles.Tapestry import pallete, layer_mngr, saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, \
-     textBt, BUILD, build, LOAD, load, NEWLAYER, DELLAYER, settings, popupBt, text, AUTOSAVE, AUTOSAVE_EV, BUILD_EV, prompt
+from SourceFiles.Tapestry import pallete, layer_mngr, build, load, settings, AUTOSAVE, AUTOSAVE_EV
 from SourceFiles.Template import template, component, tDict, SwitchIn_tDict
 from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
-from SourceFiles.Settings import settings_object_dict
+from SourceFiles.Button import saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, textBt, text, popupBt, \
+    BUILD, LOAD, NEWLAYER, DELLAYER, BUILD_EV
 
 #____Palletes_____#
 BasicPL = pallete([10, 10], 0, 230, 250, color_rgb(170, 170, 170))

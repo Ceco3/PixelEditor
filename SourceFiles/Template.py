@@ -1,14 +1,10 @@
 from .Mouse import Mouse
+from .ComF import cmax
 
 import pygame
 
 tDict: dict[int, 'template'] = {}
 # -1 is reserved for propmts
-
-def cmax(list_):
-    if list_ == []:
-        return -1
-    return max(list_)
 
 def sub(first: tuple, second: tuple):
     return (first[0] - second[0], first[1] - second[1])
