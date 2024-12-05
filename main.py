@@ -10,7 +10,7 @@ from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
 from SourceFiles.Button import saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, textBt, text, popupBt, \
-    BUILD, LOAD, NEWLAYER, DELLAYER, BUILD_EV
+    BUILD, LOAD, NEWLAYER, DELLAYER
 
 #____Palletes_____#
 BasicPL = pallete([10, 10], 0, 230, 250, color_rgb(170, 170, 170))
@@ -23,11 +23,14 @@ BasicPL.new_color(color_rgba(100, 50, 0, 255))
 BasicPL.new_color(color_rgba(0, 150, 255, 255))
 BasicPL.new_color(color_rgba(100, 0, 50, 255))
 BasicPL.new_color(color_rgba(120, 150, 90, 255))
-BasicPL.new_color(color_rgba(205, 0, 255, 155))
+BasicPL.new_color(color_rgba(205, 0, 255, 255))
 BasicPL.new_color(color_rgba(220, 210, 220, 255))
 BasicPL.new_color(color_rgba(150, 140, 150, 255))
 BasicPL.new_color(color_rgba(0, 1, 0, 255))
 BasicPL.new_color(color_rgba(230, 20, 55, 255))
+BasicPL.new_color(color_rgba(10, 150, 40, 255))
+
+print(BasicPL.primary)
 
 
 Registry.Write("Char", "")
@@ -135,9 +138,7 @@ SwitchIn_tDict(1, 4)
 #___InitStuff___#
 Mouse.tool = Pencil
 pygame.time.set_timer(AUTOSAVE_EV, Settings.Get("User", "AutoSave"))
-
-# Remove at will
-# Canvas.lDict[1].change_pixel((-14, -1), color_rgba(200, 100, 150, 255))
+bckgrnd = pygame.transform.scale(pygame.image.load("Gallery/background.jpg").convert(), (Window.winX, Window.winY))
 
 #___MAINLOOP___#
 while True:
@@ -190,6 +191,8 @@ while True:
         Canvas.draw_with_tool(LyrM, tDict, Window.screen)
     if not Mouse.state["visualM"]:
         Canvas.draw_with_tool(LyrM)
+
+    Window.screen.blit(bckgrnd, (0, 0))
 
     Canvas.lDict[Mouse.layer_selected].draw()
     for index in range(max(list(tDict.keys())) + 1):

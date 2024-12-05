@@ -74,10 +74,11 @@ class pallete(component):
         self.primary = {}
 
     def draw(self):
+        cntr = 0
         super().draw()
         maximal = max(list(self.primary.keys()))
-        rows = (self.iconSize * len(list(self.primary.keys()))) // (self.stats["w"] + 20) + 1
         columns = (self.stats["w"] - 20) // self.iconSize
+        rows = len(self.primary) // columns + 1
         for y in range(rows):
             for x in range(columns):
                 if x + columns * y > maximal:
