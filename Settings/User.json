@@ -5,5 +5,12 @@
         "LoadDir": "Gallery"
     },
     "Design": "Light",
+    "Designs": {
+        "Light": {
+            "Template" : [[150, 150, 150], [70, 70, 70]],
+            "Panel"    : [[170, 170, 170]],
+            "Button"   : [[100, 100, 100], [60, 60, 60], [200, 200, 200]]
+        }
+    },
     "AutoSave": 1000000
 }

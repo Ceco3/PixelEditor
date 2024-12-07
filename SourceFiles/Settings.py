@@ -1,76 +1,88 @@
 import json
 import os
 
-def generate_class(json_settings_file_name):
-    def constructor(self, json_settings_file):
-        set_attributes(self, json_settings_file)
+settings_directory_path = "Settings"
 
-    def set_attributes(self, json_settings_file):
-        for attribute_name in json_settings_file.keys():
-            setattr(self, attribute_name, json_settings_file[attribute_name])
+def load_all_settings(folder_path: str = settings_directory_path) -> dict[str, dict]:
+    """Returns a (nested) dictionary containing loaded settings (again as dictionaries)
+       with their keys being the names of the specific setting.
+       (i. e. {"User": <Setting-dict>})"""
+    all_settings: dict[str, dict] = {}
+    for file_sub_path in os.listdir(folder_path):
+        with open(folder_path + "\\" + file_sub_path) as json_file:
+            all_settings[file_sub_path.replace(".json", "")] = json.load(json_file)
+            # Make sure <file_sub_path> doesn't contain (.json) twice
+    return all_settings
 
-    def show(self):
-        print(type(self).__name__)
-        for atrribute in vars(self):
-            print("    " + atrribute)
+settings_dict = load_all_settings()
 
-    def deep_show(self):
-        print(type(self).__name__)
-        for atrribute in vars(self):
-            print("    " + atrribute + "  ->  " + str(getattr(self, atrribute)))
+def save_specified_setting(setting_name: str) -> None:
+    # Writes json to file under <settings_directory_path> names <settings_name>
+    with open(settings_directory_path + "\\" + setting_name + ".json", "w") as json_file:
+        json.dump(settings_dict[setting_name], json_file, indent=4)
 
-    return type(json_settings_file_name, (object, ), {"__init__": constructor, "show": show, "deep_show": deep_show})
-
-def load_all_settings(settings_directory_path):
-    """Returns a dictionary with values as instances of python class representation
-        of json files in specified settings directory"""
-    settings_object_dict = {}
-    for file_sub_path in os.listdir(settings_directory_path):
-        with open(settings_directory_path + "\\" + file_sub_path) as json_file:
-            new_class = generate_class(file_sub_path.rstrip(".json"))
-            settings_object_dict[file_sub_path.rstrip(".json")] = (new_class(json.load(json_file)), new_class)
-    
-    return settings_object_dict
-
-def save_specified_settings(name):
-    with open("Settings\\" + name + ".json", "w") as f:
-        json.dump(settings_object_dict[name][0].__dict__, f, indent=4)
-
-def load_specified_settings(name):
-    with open("Settings\\" + name + ".json", "r") as json_file:
-        obj_, class_ = settings_object_dict[name]
-        settings_object_dict[name] = (settings_object_dict[name][1](json.load(json_file)), class_)
+def load_specified_setting(setting_name: str) -> None:
+    # Updates settings_dict[<setting_name>] with current json file
+    with open(settings_directory_path + "\\" + setting_name + ".json", "r") as json_file:
+        settings_dict[setting_name] = json.load(json_file)
 
 
-#___accessories___#
-def Set(settings_name: str, attrs: list[str] | str, val):
-    if isinstance(attrs, str):
-        setattr(settings_object_dict[settings_name][0], attrs, val)
+
+def aux_get(inner_dict: dict, arg_list: list[str]):
+    if len(arg_list) == 1:
+        return inner_dict[arg_list.pop()]
+    return aux_get(inner_dict[arg_list.pop()], arg_list)
+
+def aux_set(inner_dict: dict, arg_list: list[str], value):
+    if len(arg_list) == 1:
+        inner_dict[arg_list.pop()] = value
         return
-    if len(attrs) == 1:
-        setattr(settings_object_dict[settings_name][0], attrs[0], val)
+    aux_set(inner_dict[arg_list.pop()], arg_list, value)
+
+#______Accesories______#
+def Get(setting_name, arg_list: list[str] | str): # -> Any
+    if isinstance(arg_list, str):
+        return settings_dict[setting_name][arg_list]
+    arg_list.reverse()
+    return aux_get(settings_dict[setting_name], arg_list)
+
+def Set(setting_name, arg_list: list[str] | str, value) -> None:
+    if isinstance(arg_list, str):
+        settings_dict[setting_name][arg_list] = value
         return
-    if len(attrs) == 2:
-        dct = Get(settings_name, attrs[0])
-        dct[attrs[1]] = val
-        setattr(settings_object_dict[settings_name][0], attrs[0], dct)
+    arg_list.reverse()
+    aux_set(settings_dict[setting_name], arg_list, value)
+
+
+
+#_____Debugging_____#
+def aux_show(inner_dict: dict, indent: int):
+    for key, value in inner_dict.items():
+        if not isinstance(value, dict):
+            print(indent * " " + key + " : " + str(value))
+            continue
+        print(indent * " " + key)
+        aux_show(inner_dict[key], indent + 4)
+
+def Show(setting_name: str | None) -> None:
+    if setting_name is None:
+        aux_show(settings_dict, 0)
         return
-    print("I'm sorry I don't support this yet :( (Message called from Set in Settings)")
+    aux_show(settings_dict[setting_name], 0)
 
-def Get(settings_name: str, attr: str):
-    return getattr(settings_object_dict[settings_name][0], attr)
+#____________Showcase_Use___________#
+# Set("User", ["Designs", "Light", "Panel"], [[10, 10, 10]]))
+# Show(None)
+# Show("User")
 
-settings_object_dict = load_all_settings('Settings')
-# Fix Home Path
-
-#__Wiev_of_<settings_object_dict>_example__#
+#______Design_Pattern______#        (Found in User.json)
 #
-#{ "User"    :  (<__main__.User object at 0x000001E6B86CA250>, <class '__main__.User'>)       
-#  "Project" : (<__main__.Project object at 0x000001DF64B4CD50>, <class '__main__.Project'>)}
-
-#___USE___#
-# class_object_dict["User"][0].deep_show()
-# save_specified_settings("User")
-# load_specified_settings("User")
-# settings_object_dict["User"][0].deep_show()
-# print(settings_object_dict["User"][0].Paths)
+# Designs : {
+#   "<Desing Name (e.g. "Light")>" : {
+#       "Template" : [<Color>, <fColor>],
+#       "Panel"    : [<Color>],
+#       "Buttons"  : [<Color>, <fColor>, <tColor>]
+#       }
+# }
+#
+# Where Color, fColor, tColor are [r, g, b] triples

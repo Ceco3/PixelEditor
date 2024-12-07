@@ -31,7 +31,7 @@ class icon(component):
         self.icon_surf = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (width, height))
 
     def onClick(self):
-        pass
+        return
 
     def draw(self):
         super().draw()
