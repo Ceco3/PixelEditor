@@ -37,9 +37,9 @@ class layer:
                 self.stats[self.grid[y][x].toTuple()] += 1
 
     def build(self):
-        for i in range(1, self.pix_h + 1):
+        for _ in range(self.pix_h):
             arr = []
-            for j in range(1, self.pix_w + 1):
+            for _ in range(self.pix_w):
                 arr.append(color_rgba(0, 0, 0, 0))
             self.grid.append(arr)
 
@@ -156,7 +156,7 @@ def aux_rescale_x(Layer: layer, new_pix_w: int, isGreater: bool) -> None:
         for _ in range(abs(new_pix_w - Layer.pix_w)):
             if not isGreater:
                 Layer.grid[row_idx].append(color_rgba(0, 0, 0, 0))
-                return
+                continue
             Layer.grid[row_idx].pop()
 
 def rescale_canvas(position: list[int], screen_w, width, screen_h, height, pix_dim: list[int]):
@@ -181,6 +181,10 @@ def rescale_canvas(position: list[int], screen_w, width, screen_h, height, pix_d
         layer.pix_h = pix_h
         layer.surf.fill((0, 0, 0))
         layer.draw()
+    
+    Canvas.lDict[0].pix_w = pix_w
+    Canvas.lDict[0].pix_h = pix_h
+    Canvas.lDict[0].build_background()
 
     Canvas.pix_w = pix_w
     Canvas.pix_h = pix_h
