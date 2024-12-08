@@ -9,7 +9,7 @@ import pygame
 import copy
 
 class layer:
-    def __init__(self, order, width, height, pix_w, pix_h) -> None:
+    def __init__(self, order, width, pix_w, height, pix_h) -> None:
         self.order = order
         self.width = width
         self.height = height
@@ -28,7 +28,7 @@ class layer:
             if index == "all":
                 continue
             self.stats[index] = 0
-        # Too Slow, keep track somewhere instead
+        # Too Slow, keep track somewhere instead (maybe in layer.stats?)
         for y in range(self.pix_h):
             for x in range(self.pix_w):
                 if self.grid[y][x].toTuple() not in list(self.stats.keys()):
@@ -96,7 +96,7 @@ class canvas(template):
     def new_layer(self):
         keys = list(self.lDict.keys())
         new_layer_order = cmax(keys) + 1
-        self.lDict[new_layer_order] = layer(new_layer_order, self.stats["w"], self.stats["h"], self.pix_w, self.pix_h)
+        self.lDict[new_layer_order] = layer(new_layer_order, self.stats['w'], self.pix_w, self.stats['h'], self.pix_h)
         self.lDict[new_layer_order].draw()
         return new_layer_order
 
@@ -149,9 +149,42 @@ class canvas(template):
 Canvas = canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, \
                 Settings.Get("Project", "CanvasMeta"))
 
-def rebuild_canvas(position: list[int], screen_w, width, screen_h, height, pix_dim: list[int]):
-    print("rebuild called")
-    Canvas = canvas(position, screen_w, width, screen_h, height, pix_dim, 0)
+
+
+def aux_rescale_x(Layer: layer, new_pix_w: int, isGreater: bool) -> None:
+    for row_idx in range(len(Layer.grid)):
+        for _ in range(abs(new_pix_w - Layer.pix_w)):
+            if not isGreater:
+                Layer.grid[row_idx].append(color_rgba(0, 0, 0, 0))
+                return
+            Layer.grid[row_idx].pop()
+
+def rescale_canvas(position: list[int], screen_w, width, screen_h, height, pix_dim: list[int]):
+    global Canvas
+    pix_w, pix_h = pix_dim
+
+    for layer in Canvas.lDict.values():
+        if layer.pix_w < pix_w:
+            aux_rescale_x(layer, pix_w, False)
+        if layer.pix_w > pix_w:
+            aux_rescale_x(layer, pix_w, True)
+        if layer.pix_h < pix_h:
+            for _ in range(pix_h - layer.pix_h):
+                row = []
+                for _ in range(pix_w):
+                    row.append(color_rgba(0, 0, 0, 0))
+                layer.grid.append(row)
+        if layer.pix_h > pix_h:
+            for _ in range(abs(pix_h - layer.pix_h)):
+                layer.grid.pop()
+        layer.pix_w = pix_w
+        layer.pix_h = pix_h
+        layer.surf.fill((0, 0, 0))
+        layer.draw()
+
+    Canvas.pix_w = pix_w
+    Canvas.pix_h = pix_h
+
 #___________________Canvas_Attach_Functions___________________#
 
 def Reflect(BtObject):

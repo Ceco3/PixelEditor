@@ -1,7 +1,7 @@
 import pygame
 import sys
 
-from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rebuild_canvas
+from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rescale_canvas
 from SourceFiles.Color import color_rgba, color_rgb
 from SourceFiles.Tapestry import pallete, layer_mngr, build, load, settings, AUTOSAVE, AUTOSAVE_EV
 from SourceFiles.Template import template, component, tDict, SwitchIn_tDict
@@ -11,6 +11,8 @@ from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
 from SourceFiles.Button import saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, textBt, text, popupBt, \
     BUILD, LOAD, NEWLAYER, DELLAYER
+from SourceFiles.ComF import validate_string
+from SourceFiles.Prompt import prompt
 
 #____Palletes_____#
 BasicPL = pallete([10, 10], 0, 230, 250, color_rgb(170, 170, 170))
@@ -29,8 +31,6 @@ BasicPL.new_color(color_rgba(150, 140, 150, 255))
 BasicPL.new_color(color_rgba(0, 1, 0, 255))
 BasicPL.new_color(color_rgba(230, 20, 55, 255))
 BasicPL.new_color(color_rgba(10, 150, 40, 255))
-
-print(BasicPL.primary)
 
 
 Registry.Write("Char", "")
@@ -57,26 +57,28 @@ CanvasXBtTxt = text((50, 90), 5, 150, 30, color_rgb(150, 150, 150), color_rgb(70
 CanvasYBt = textBt((10, 130), 6, 30, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (7, 10))
 CanvasYBtTxt = text((50, 130), 7, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "canvas height", textPos = (0, 10))
 # These two functions are almost exactly the same (you might wanna do something about it) ((or you can't))
-def CanvasXBtFn(CanvasXBt: button):
+def CanvasXBtFn(CanvasXBt: textBt):
     dimensions = Settings.Get("Project", "CanvasMeta")
+    if not validate_string(CanvasXBt.stats["txt"]):
+        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, 
+                            color_rgb(150, 150, 150), color_rgb(70, 70, 70), "select valid size")
+        return
     dimensions[0] = int(CanvasXBt.stats["txt"])
     Settings.Set("Project", "CanvasMeta", dimensions)
-    rebuild_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
-def CanvasYBtFn(CanvasYBt: button):
+    rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
+def CanvasYBtFn(CanvasYBt: textBt):
     dimensions = Settings.Get("Project", "CanvasMeta")
-    dimensions[1] = int(CanvasXBt.stats["txt"])
+    if not validate_string(CanvasYBt.stats["txt"]):
+        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, 
+                            color_rgb(150, 150, 150), color_rgb(70, 70, 70), "select valid size")
+        return
+    dimensions[1] = int(CanvasYBt.stats["txt"])
     Settings.Set("Project", "CanvasMeta", dimensions)
-    rebuild_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
+    rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
 CanvasXBt.attach(CanvasXBtFn)
-CanvasYBt.attach(CanvasXBtFn)
-Settings_.components[0].link_component(NameBt)
-Settings_.components[0].link_component(NameTxt)
-Settings_.components[0].link_component(SaveDirBt)
-Settings_.components[0].link_component(SaveDirTxt)
-Settings_.components[0].link_component(CanvasXBt)
-Settings_.components[0].link_component(CanvasXBtTxt)
-Settings_.components[0].link_component(CanvasYBt)
-Settings_.components[0].link_component(CanvasYBtTxt)
+CanvasYBt.attach(CanvasYBtFn)
+Settings_.components[0].link_multi(NameBt, NameTxt, SaveDirBt, SaveDirTxt, CanvasXBt, CanvasXBtTxt,
+                                   CanvasYBt, CanvasYBtTxt)
 
 
 #___CANVAS___#

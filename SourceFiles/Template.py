@@ -42,10 +42,14 @@ class component:
         self.components[new_component_order].master = self
         self.components[new_component_order].draw()
 
-    def link_component(self, Component):
+    def link_component(self, Component: 'component'):
         self.components[Component.order] = Component
         Component.master = self
         self.draw()
+
+    def link_multi(self, *args: 'component'):
+        for arg in args:
+            self.link_component(arg)
 
     def contains(self, position):
         if position[0] < self.localPos[0] + 2 or position[0] >  self.localPos[0] + self.stats["w"] - 2:

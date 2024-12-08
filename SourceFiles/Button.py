@@ -64,7 +64,7 @@ class button(component):
         self.stats["txtp"] = textPos
         self.overlaySurf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
         self.icon = None
-        self.master = None
+        self.master: component = None
         self.attached = None # Newer version of bound (See <attach> method)
 
     def loadIcon(self, iconPath):
@@ -310,13 +310,15 @@ class textBt(button):
         self.backspace_timer = 0
 
     def onClick(self):
-        super().onClick()
+        self.stats["f"] = not self.stats["f"]
         if self.toggle:
             pygame.key.stop_text_input()
             if self.attached is not None:
                 self.attached(self)
         if not self.toggle:
             pygame.key.start_text_input()
+        self.draw()
+        self.master.draw()
         self.toggle = not self.toggle
 
     def Update(self):
