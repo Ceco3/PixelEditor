@@ -1,4 +1,4 @@
-from .Template import component, template
+from .Template import component, template, sub
 from .Text import make_word
 from .Mouse import Mouse
 from .ComF import cmax, Lerp
@@ -29,6 +29,7 @@ class icon(component):
         self.stats["fc"] = fcolor.toTuple()
         self.stats["ip"] = icon_pos
         self.icon_surf = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (width, height))
+        self.draw()
 
     def onClick(self):
         return
@@ -59,13 +60,19 @@ class button(component):
         super().__init__(localPos, order, width, height, color)
         self.stats["f"] = True
         self.stats["fc"] = fcolor.toTuple()
-        self.stats["tc"] = tcolor.toTuple()
-        self.stats["txt"] = text
-        self.stats["txtp"] = textPos
+        if tcolor is not None:
+            self.stats["tc"] = tcolor.toTuple()
+        if text is not None:
+            self.stats["txt"] = text
+        if textPos is not None:
+            self.stats["txtp"] = textPos
         self.overlaySurf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
+        self.text_surf = None
         self.icon = None
         self.master: component = None
         self.attached = None # Newer version of bound (See <attach> method)
+        if text is not None:
+            self.text_surf = make_word(self.stats["txt"], self.stats["tc"])
 
     def loadIcon(self, iconPath):
         self.icon = pygame.transform.scale(pygame.image.load(iconPath).convert_alpha(), (self.stats["w"], self.stats["h"]))
@@ -73,7 +80,8 @@ class button(component):
     def draw(self):
         super().draw()
         pygame.draw.rect(self.surf, self.stats["fc"], pygame.Rect(3, 3, self.stats["w"] - 6, self.stats["h"] - 6))
-        self.surf.blit(make_word(self.stats["txt"], self.stats["tc"]), self.stats["txtp"])
+        if self.text_surf is not None:
+            self.surf.blit(self.text_surf, self.stats["txtp"])
         if self.icon != None:
             self.surf.blit(self.icon, (0, 0))
         if self.stats["f"]:
@@ -84,6 +92,7 @@ class button(component):
         self.surf.blit(self.overlaySurf, (0, 0))
 
     def onClick(self):
+        self.isClicked = True
         break_click_loop = False
         self.stats["f"] = not self.stats["f"]
         if self.attached is not None:
@@ -91,6 +100,9 @@ class button(component):
         self.draw()
         self.master.draw()
         return break_click_loop
+    
+    def onRelease(self):
+        self.isClicked = False
 
     def attach(self, func):
         "Attach a function <func> to button, the function will be called in the onClick method"
@@ -302,6 +314,50 @@ class popupBt(button):
             if not self.toggle:
                 self.subject.toggle = False
 
+class sliderBt(button):
+    def __init__(self, localPos, order, width, height, fcolor, color, horizontal = False):
+        super().__init__(localPos, order, width, height, fcolor, color, None, None, None)
+        Updater.Add(self)
+        self.sensitivity = 1
+        self.horizontal = horizontal
+        self.last_frame_pos = self.localPos[self.aux()]
+        self.difference = 0
+
+    def aux(self) -> int:
+        if self.horizontal:
+            return 0
+        return 1
+
+    def onClick(self):
+        # Doenst call super().onClick()
+        x_o, y_o = self.localPos
+        transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
+        if self.horizontal:
+            self.difference = transformed_mouse_pos[0] - x_o
+        else:
+            self.difference = transformed_mouse_pos[1] - y_o
+        self.stats["f"] = True
+        self.isClicked = True
+
+    def onRelease(self):
+        self.stats["f"] = False
+        self.draw()
+        self.master.draw()
+        return super().onRelease()
+
+    def Update(self):
+        if self.isClicked:
+            transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
+            x_o, y_o = self.localPos
+            if self.horizontal:
+                self.localPos = (transformed_mouse_pos[0] - self.difference, y_o)
+            else:
+                self.localPos = (x_o, transformed_mouse_pos[1] - self.difference)
+            self.master.cutoff += (self.localPos[self.aux()] - self.last_frame_pos) * self.sensitivity
+            self.last_frame_pos = self.localPos[self.aux()]
+            self.draw()
+            self.master.draw()
+
 class textBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
@@ -335,5 +391,6 @@ class textBt(button):
             if Registry.Read("Char") != "":
                 self.stats["txt"] += Registry.Read("Char")
                 Registry.Write("Char", "")
+                self.text_surf = make_word(self.stats["txt"], self.stats["tc"]) # Performance crusher
                 self.draw()
                 self.master.draw()

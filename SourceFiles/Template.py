@@ -1,5 +1,6 @@
 from .Mouse import Mouse
 from .ComF import cmax
+from .Color import color_rgb
 
 import pygame
 
@@ -14,14 +15,12 @@ def SwitchIn_tDict(key_1, key_2):
     tDict[key_2] = tDict[key_1]
     tDict[key_1] = x
 
-class slider:
-    def __init__(self, localPos, color, bcolor, width, height) -> None:
-        pass
 
 class component:
-    def __init__(self, localPos, order, width, height, color) -> None:
+    def __init__(self, localPos, order, width, height, color: color_rgb) -> None:
         self.localPos = localPos
         self.order = order
+        self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
         self.stats = {
             "w" : width,
@@ -52,19 +51,28 @@ class component:
             self.link_component(arg)
 
     def contains(self, position):
+        "<position> is in local coordinates"
         if position[0] < self.localPos[0] + 2 or position[0] >  self.localPos[0] + self.stats["w"] - 2:
             return False
         if position[1] < self.localPos[1] + 2 or position[1] >  self.localPos[1] + self.stats["h"] - 2:
             return False
         return True
 
-    def onClick(self, localMousePos):
+    def onClick(self, localMousePos): # <localMousePos> was used back when Mouse wasn't easily accesible (consider removing it)
+        self.isClicked = True
         highest = cmax(list(self.components.keys()))
         for index in range(min(list(self.components.keys())), highest + 1):
             if not self.components[index].contains(localMousePos):
                 continue
             if self.components[index].onClick(): # Calls onClicks + checks if
-                break                            # the cycle should break
+                break                            # the cycle should break (some buttons can alter <self.components>)
+
+    def onRelease(self):
+        self.isClicked = False
+        for Component in self.components.values():
+            if not Component.isClicked:
+                continue
+            Component.onRelease()
 
     def draw(self):
         self.surf.fill(self.stats["c"])
@@ -72,6 +80,7 @@ class component:
         for index in range(highest + 1):
             self.components[index].draw()
             self.surf.blit(self.components[index].surf, self.components[index].localPos)
+
 
 class template:
     def __init__(self, position, master_w, width, master_h, height, color, frame_color, tDict_override = None) -> None:
@@ -81,6 +90,7 @@ class template:
         else:
             tDict[tDict_override] = self
         self.position = position
+        self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
         self.stats = {
             "mw" : master_w,
@@ -116,11 +126,18 @@ class template:
         return True
     
     def onClick(self):
-        highest = cmax(list(self.components.keys()))
-        for index in range(highest + 1):
-            if not self.components[index].contains(sub(Mouse.position , self.position)):
+        self.isClicked = True
+        for Component in self.components.values():
+            if not Component.contains(sub(Mouse.position , self.position)):
                 continue
-            self.components[index].onClick(sub( sub(Mouse.position , self.position) , self.components[index].localPos))
+            Component.onClick(sub( sub(Mouse.position , self.position) , Component.localPos))
+
+    def onRelease(self):
+        self.isClicked = False
+        for Component in self.components.values():
+            if not Component.isClicked:
+                continue
+            Component.onRelease()
     
     def display(self, master_surf: pygame.Surface):
         # self.surf.fill(self.stats["c"])

@@ -3,14 +3,14 @@ import sys
 
 from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rescale_canvas
 from SourceFiles.Color import color_rgba, color_rgb
-from SourceFiles.Tapestry import pallete, layer_mngr, build, load, settings, AUTOSAVE, AUTOSAVE_EV
+from SourceFiles.Tapestry import pallete, layer_mngr, slide_panel, build, load, settings, AUTOSAVE, AUTOSAVE_EV
 from SourceFiles.Template import template, component, tDict, SwitchIn_tDict
 from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
 from SourceFiles.Button import saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, textBt, text, popupBt, \
-    BUILD, LOAD, NEWLAYER, DELLAYER
+    sliderBt, icon, BUILD, LOAD, NEWLAYER, DELLAYER
 from SourceFiles.ComF import validate_string
 from SourceFiles.Prompt import prompt
 
@@ -32,13 +32,9 @@ BasicPL.new_color(color_rgba(0, 1, 0, 255))
 BasicPL.new_color(color_rgba(230, 20, 55, 255))
 BasicPL.new_color(color_rgba(10, 150, 40, 255))
 
-
 Registry.Write("Char", "")
 
 
-
-click = pygame.USEREVENT + 1
-click_ev = pygame.event.Event(click)
 
 #___SETTINGS___#
 Settings_ = settings((400, 150), Window.winX, 150, Window.winY, 60, color_rgb(120, 120, 120), color_rgb(70, 70, 70))
@@ -108,10 +104,11 @@ ReflectBt.loadIcon("Icons\Reflect.png")
 ReflectBt.attach(Reflect)
 
 Garage.new_component((10, 10), 280, 300, color_rgb(170, 170, 170))
-Garage.components[0].link_component(BucketBt)
-Garage.components[0].link_component(PencilBt)
-Garage.components[0].link_component(VisBt)
-Garage.components[0].link_component(ReflectBt)
+Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, ReflectBt)
+Slider = sliderBt((10, 10), 0, 16, 50, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
+Archetype = slide_panel((10, 320), 1, 280, 270, 280, 600, color_rgb(170, 170, 170), Slider)
+Archetype.link_component(icon((100, 100), 1, 30, 30, color_rgb(100, 200, 100), color_rgb(100, 200, 100), "Icons/Python.png"))
+Garage.link_component(Archetype)
 
 Polish = template((450, 20), Window.winX, 700, Window.winY, 100, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
 Polish.new_component((0, 0), 200, 100, color_rgb(150, 150, 150))
@@ -150,12 +147,6 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == click:
-            most = max(list(tDict.keys()))
-            for index in range(most + 1):
-                if not tDict[index].contains(Mouse.position) or not tDict[index].toggle:
-                    continue
-                tDict[index].onClick()
         if event.type == BUILD:
             print(Settings.Get("User", "Paths")["SaveDir"])
             print(Settings.Get("Project", "Name"))
@@ -179,10 +170,17 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             Mouse.state["isDown"] = True
             Mouse.state["LWR"] = pygame.mouse.get_pressed()
-            pygame.event.post(click_ev)
+            for Template in tDict.values():
+                if not Template.contains(Mouse.position) or not Template.toggle:
+                    continue
+                Template.onClick()
         if event.type == pygame.MOUSEBUTTONUP:
             Mouse.state["isDown"] = False
             Mouse.state["LWR"] = (False, False, False)
+            for Template in tDict.values():
+                if not Template.isClicked:
+                    continue
+                Template.onRelease()
         if event.type == pygame.TEXTINPUT:
             Registry.Write("Char", event.text)
 
