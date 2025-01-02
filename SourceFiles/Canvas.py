@@ -6,6 +6,9 @@ from .Mouse import Mouse
 from . import Settings
 import pygame
 
+# Forbidden Imports:
+# Tapestry
+
 import copy
 
 class layer:
@@ -18,23 +21,12 @@ class layer:
         self.name = "Layer " + str(order)
         self.grid: list[list[color_rgba]] = []
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-        self.stats = {
-            "all" : pix_h * pix_w
+        self.stats = {}
+        self.color_data: dict[tuple, int] = { # This does not work for the 0 layer
+            "size": pix_w * pix_h,
+            (0, 0, 0, 0): pix_w * pix_h
         }
         self.build()
-
-    def updateStats(self):
-        for index in list(self.stats.keys()):
-            if index == "all":
-                continue
-            self.stats[index] = 0
-        # Too Slow, keep track somewhere instead (maybe in layer.stats?)
-        for y in range(self.pix_h):
-            for x in range(self.pix_w):
-                if self.grid[y][x].toTuple() not in list(self.stats.keys()):
-                    self.stats[self.grid[y][x].toTuple()] = 1
-                    continue
-                self.stats[self.grid[y][x].toTuple()] += 1
 
     def build(self):
         for _ in range(self.pix_h):
@@ -56,11 +48,15 @@ class layer:
         for y in range(self.pix_h):
             for x in range(self.pix_w):
                 pygame.draw.rect(self.surf, self.grid[y][x].toTuple(), pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h, self.width / self.pix_w, self.height / self.pix_h))
-        # self.updateStats()
 
-    def change_pixel(self, pixelPos, newColor: color_rgba, tDict = None, screen = None):
+    def change_pixel(self, pixelPos, newColor: color_rgba):
         "PixelPos is in (x, y) form x,y are ints"
         x, y = pixelPos
+        oldColor: color_rgba = self.grid[y][x]
+        self.color_data[oldColor.toTuple()] -= 1
+        if newColor.toTuple() not in self.color_data:
+            self.color_data[newColor.toTuple()] = 0
+        self.color_data[newColor.toTuple()] += 1
         self.grid[y][x] = newColor
         # self.draw()
 
@@ -135,8 +131,8 @@ class canvas(template):
             return
 
         if Mouse.state["LWR"][2]:
-            self.lDict[Mouse.layer_selected].change_pixel(self.transform(Mouse.position), color_rgba(), tDict, screen)
-            lyr_mngr.update(self.lDict, Mouse)
+            self.lDict[Mouse.layer_selected].change_pixel(self.transform(Mouse.position), color_rgba())
+            lyr_mngr.update()
             return
 
         if Mouse.state["visualM"]:
@@ -144,7 +140,7 @@ class canvas(template):
         else:
             Mouse.tool.onUse(self.transform(Mouse.position), tDict, screen)
         #self.lDict[mouse.layer_selected].change_pixel(self.transform(mouse.position), mouse.color)
-        lyr_mngr.update(self.lDict, Mouse)
+        lyr_mngr.update()
 
 Canvas = canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, \
                 Settings.Get("Project", "CanvasMeta"))
@@ -191,20 +187,32 @@ def rescale_canvas(position: list[int], screen_w, width, screen_h, height, pix_d
 
 #___________________Canvas_Attach_Functions___________________#
 
-def Reflect(BtObject):
-    for layer_ in Canvas.lDict.keys():
-        if layer_ == 0:
+def Reflect(BtObject, horizontal: bool):
+    for Layer in Canvas.lDict.values():
+        if Layer.order == 0:
             continue
-        if Canvas.lDict[layer_].pix_w % 2 == 1:
+
+        if horizontal:
             new_grid = []
-            for i in range(Canvas.lDict[layer_].pix_h):
+            for i in range(Layer.pix_h):
                 arr = []
-                for j in range(Canvas.lDict[layer_].pix_w):
-                    arr.append(Canvas.lDict[layer_].grid[i][-j - 1])
+                for j in range(Layer.pix_w):
+                    arr.append(Layer.grid[i][-j - 1])
                 new_grid.append(arr)
-    
-        Canvas.lDict[layer_].grid = new_grid
-        Canvas.lDict[layer_].draw()
+        
+            Layer.grid = new_grid
+            Layer.draw()
+
+        if not horizontal:
+            new_grid = []
+            for i in range(Layer.pix_w):
+                arr = []
+                for j in range(Layer.pix_h):
+                    arr.append(Layer.grid[i][-j - 1])
+                new_grid.append(arr)
+        
+            Layer.grid = new_grid
+            Layer.draw()
     
     Canvas.display(Window.screen)
 #___________________________TOOLS_____________________________#

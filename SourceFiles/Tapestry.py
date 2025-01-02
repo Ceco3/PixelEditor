@@ -3,7 +3,7 @@ from .Color import toRgba, color_rgba, color_rgb
 from .Canvas import Canvas
 from .Meta import Registry
 from .Mouse import Mouse
-from .ComF import cmax
+from .ComF import cmax, ClampMin
 from .Window import Window
 from .Button import lyrBt
 from .Prompt import prompt
@@ -104,46 +104,49 @@ class pallete(component):
             pass
 
 class layer_mngr(component):
-    def __init__(self, localPos, order, width, height, color, Canvas_lDict: dict) -> None:
+    def __init__(self, localPos, order, width, height, color) -> None:
         super().__init__(localPos, order, width, height, color)
         self.stats["lyrBh"] = 25
         self.stats["lyrBw"] = 215
-        self.lDict = Canvas_lDict
-        self.build(Canvas_lDict)
+        self.build()
 
-    def build(self, Canvas_lDict):
-        for lyr_key in list(Canvas_lDict.keys()):
+    def build(self):
+        for lyr_key in Canvas.lDict:
             self.new_layer()
 
-    def update(self, Canvas_lDict, tool):
-        for lyr_key in list(Canvas_lDict.keys()):
-            self.components[lyr_key] = lyrBt((5, (self.stats["lyrBh"] + 1) * lyr_key + 5), lyr_key, self.stats["lyrBw"], self.stats["lyrBh"], color_rgb(150, 150, 150), color_rgb(150, 150, 150), color_rgb(200, 200, 200), textPos=(90, 10))
-            if tool.layer_selected == lyr_key:
+    def update(self):
+        for lyr_key in Canvas.lDict:
+            if lyr_key not in self.components:
+                self.new_layer()
+            if Mouse.layer_selected == lyr_key:
                 self.components[lyr_key].stats["f"] = False
         self.draw()
 
-    def del_layer(self, tool):
-        del self.components[tool.layer_selected]
+    def del_layer(self):
+        del self.components[Mouse.layer_selected]
         keys = list(self.components.keys())
         for key in keys:
-            if key > tool.layer_selected:
+            if key > Mouse.layer_selected:
                 self.components[key - 1] = self.components[key]
                 del self.components[key]
-        tool.layer_selected -= 1
+        Mouse.layer_selected -= 1      # Think about where to move <layer_selected> more
+        if Mouse.layer_selected == 0:
+            Mouse.layer_selected = 1
 
     def new_layer(self):
         most = cmax(list(self.components.keys()))
-        self.components[most + 1] = lyrBt((5, (self.stats["lyrBh"] + 1) * (most + 1) + 5), most + 1, self.stats["lyrBw"], self.stats["lyrBh"], color_rgb(150, 150, 150), color_rgb(150, 150, 150), color_rgb(200, 200, 200), textPos=(90, 10))
+        self.components[most + 1] = lyrBt((5, (self.stats["lyrBh"] + 1) * (most) + 5), most + 1, self.stats["lyrBw"], self.stats["lyrBh"],
+                                           color_rgb(150, 150, 150), color_rgb(150, 150, 150), color_rgb(200, 200, 200), textPos=(90, 10))
 
     def draw(self):
         self.surf.fill(self.stats["c"])
-        highest = cmax(list(self.components.keys()))
-        for index in range(highest + 1):
-            self.components[index].draw(self.lDict[index].stats)
-            self.surf.blit(self.components[index].surf, self.components[index].localPos)
-        for index in range(-1, min(list(self.components.keys())) - 1, -1):
-            self.components[index].draw()
-            self.surf.blit(self.components[index].surf, self.components[index].localPos)
+        for component in self.components.values():
+            if component.order < 0:
+                component.draw()
+                self.surf.blit(component.surf, component.localPos)
+            if component.order > 0:
+                component.draw(Canvas.lDict[component.order].color_data)
+                self.surf.blit(component.surf, component.localPos)
 
 class settings(template):
     def __init__(self, position, master_w, width, master_h, height, color, frame_color) -> None:
@@ -151,30 +154,3 @@ class settings(template):
         self.toggle = False
         self.new_component((0, 0), width, height, color_rgb(150, 150, 150))
         Registry.Write("Settings", self)
-
-class slide_panel(component):
-    def __init__(self, localPos, order, width, height, big_width, big_height, color, sliderBt, horizontal = False):
-        # Make sure <sliderBt> has order 0 (see <draw> method)
-        super().__init__(localPos, order, width, height, color)
-        self.big_width = big_width
-        self.big_height = big_height
-        self.cutoff = 0
-        self.horizontal = horizontal
-        self.slider = sliderBt
-        self.link_component(sliderBt)
-        sliderBt.draw()
-
-    def adjust(self, localPos: tuple[int, int]):
-        # Adjusts <localPos> by <self.cutoff>
-        x_o, y_o = localPos
-        if self.horizontal:
-            return (x_o - self.cutoff, y_o)
-        return (x_o, y_o - self.cutoff)
-
-    def draw(self):
-        self.surf.fill(self.stats['c'])
-        for Component in self.components.values(): # Todo: implement culling
-            if Component.order == 0:
-                self.surf.blit(Component.surf, Component.localPos)
-                continue
-            self.surf.blit(Component.surf, self.adjust(Component.localPos))

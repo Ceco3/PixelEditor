@@ -31,7 +31,7 @@ class icon(component):
         self.icon_surf = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (width, height))
         self.draw()
 
-    def onClick(self):
+    def onClick(self, localMousePos):
         return
 
     def draw(self):
@@ -46,7 +46,7 @@ class text(component):
         self.stats["txtp"] = textPos
         self.txt_surf = make_word(self.stats["txt"], self.stats["tc"])
 
-    def onClick(self):
+    def onClick(self, localMousePos):
         return
         
     def draw(self):
@@ -82,7 +82,7 @@ class button(component):
         pygame.draw.rect(self.surf, self.stats["fc"], pygame.Rect(3, 3, self.stats["w"] - 6, self.stats["h"] - 6))
         if self.text_surf is not None:
             self.surf.blit(self.text_surf, self.stats["txtp"])
-        if self.icon != None:
+        if self.icon is not None:
             self.surf.blit(self.icon, (0, 0))
         if self.stats["f"]:
             self.highlight()
@@ -91,7 +91,8 @@ class button(component):
         pygame.draw.rect(self.overlaySurf, (100, 100, 100, 100), pygame.Rect(5, 5, self.stats["w"] - 5, self.stats["h"] - 5))
         self.surf.blit(self.overlaySurf, (0, 0))
 
-    def onClick(self):
+    def onClick(self, localMousePos):
+        print("rnd bt clicked")
         self.isClicked = True
         break_click_loop = False
         self.stats["f"] = not self.stats["f"]
@@ -114,16 +115,16 @@ class toolBt(button):
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
         self.bound_tool = tool
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         Mouse.tool = self.bound_tool
 
 class visBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         Mouse.state["visualM"] = not Mouse.state["visualM"]
 
 class lyrBt(button):
@@ -132,22 +133,20 @@ class lyrBt(button):
         self.stats["f"] = True
         self.overlaySurf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
 
-    def draw(self, lyr_stats):
+    def draw(self, color_data):
         most = cmax(list(self.components.keys()))
-        colors = list(lyr_stats.keys())
-        colors.remove("all")
         x = 5
-        for color in colors:
-            if color == (0, 0, 0, 0):
+        for color in color_data:
+            if color == (0, 0, 0, 0) or color == "size":
                 continue
             pygame.draw.rect(self.surf, color, pygame.Rect(x, (self.stats["h"] + 1) * (most + 1) + 5, 220, self.stats["h"]))
-            x += (lyr_stats[color] / lyr_stats["all"]) * 220
+            x += (color_data[color] / color_data["size"]) * 220
         pygame.draw.rect(self.surf, self.stats["c"], pygame.Rect(x, (self.stats["h"] + 1) * (most + 1) + 5, 220, self.stats["h"]))
-        self.surf.blit(make_word(self.stats["txt"], self.stats["tc"]), self.stats["txtp"])
+        self.surf.blit(self.text_surf, self.stats["txtp"])
         if self.stats["f"]:
             self.highlight()
 
-    def onClick(self):
+    def onClick(self, localMousePos):
         self.stats["f"] = not self.stats["f"]
         Mouse.layer_selected = self.order
 
@@ -155,31 +154,31 @@ class newLBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "new", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         pygame.event.post(NEWLAYER_EV)
 
 class delLBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "del", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         pygame.event.post(DELLAYER_EV)
 
 class saveBt(button):
     def __init__(self, localPos, order, width, height, color, fcolor, tcolor, text = "save", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, color, fcolor, tcolor, text, textPos)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         pygame.event.post(BUILD_EV)
 
 class exitBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "exit", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
 
-    def onClick(self):
+    def onClick(self, localMousePos):
         pygame.quit()
         sys.exit()
 
@@ -187,8 +186,8 @@ class loadBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "load", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         pygame.event.post(LOAD_EV)
 
 class rollBt(button):
@@ -201,8 +200,8 @@ class rollBt(button):
         self.end = None
         Updater.Add(self)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         self.isLerping = True
         x, y = self.master.master.position
         match self.toggle:
@@ -240,8 +239,8 @@ class frameBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
         super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         print(Registry.Read("Canvas").create_frame())
 
 class popupBt(button):
@@ -275,8 +274,8 @@ class popupBt(button):
             x_o, y_o, x_f, y_f = buffer
             self.component_buffer[i] = x_f, y_f, x_o, y_o
 
-    def onClick(self):
-        super().onClick()
+    def onClick(self, localMousePos):
+        super().onClick(localMousePos)
         match self.toggle:
             case False:
                 self.subject.toggle = True
@@ -328,8 +327,7 @@ class sliderBt(button):
             return 0
         return 1
 
-    def onClick(self):
-        # Doenst call super().onClick()
+    def onClick(self, localMousePos):
         x_o, y_o = self.localPos
         transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
         if self.horizontal:
@@ -365,7 +363,7 @@ class textBt(button):
         self.toggle = False
         self.backspace_timer = 0
 
-    def onClick(self):
+    def onClick(self, localMousePos):
         self.stats["f"] = not self.stats["f"]
         if self.toggle:
             pygame.key.stop_text_input()
@@ -385,6 +383,7 @@ class textBt(button):
                 self.backspace_timer = 6
                 self.stats["txt"] = self.stats["txt"][:len(self.stats["txt"]) - 1]
                 Registry.Write("Char", "")
+                self.text_surf = make_word(self.stats["txt"], self.stats["tc"]) # Performance crusher
                 self.draw()
                 self.master.draw()
                 return

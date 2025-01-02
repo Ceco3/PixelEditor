@@ -3,8 +3,8 @@ import sys
 
 from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rescale_canvas
 from SourceFiles.Color import color_rgba, color_rgb
-from SourceFiles.Tapestry import pallete, layer_mngr, slide_panel, build, load, settings, AUTOSAVE, AUTOSAVE_EV
-from SourceFiles.Template import template, component, tDict, SwitchIn_tDict
+from SourceFiles.Tapestry import pallete, layer_mngr, build, load, settings, AUTOSAVE, AUTOSAVE_EV
+from SourceFiles.Template import template, component, slide_panel, tDict, SwitchIn_tDict
 from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
@@ -78,7 +78,7 @@ Settings_.components[0].link_multi(NameBt, NameTxt, SaveDirBt, SaveDirTxt, Canva
 
 
 #___CANVAS___#
-LyrM = layer_mngr([10, 310], 1, 230, 200, color_rgb(170, 170, 170), Canvas.lDict)
+LyrM = layer_mngr([10, 310], 1, 230, 200, color_rgb(170, 170, 170))
 Registry.Write("LayerManager", LyrM)
 SaveBt = saveBt((10, 10), 0, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (11, 10))
 ExitBt = exitBt((80, 10), 1, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (11, 10))
@@ -162,11 +162,15 @@ while True:
             Settings.save_specified_settings("Project")
         if event.type == NEWLAYER:
             Mouse.layer_selected = Canvas.new_layer()
-            LyrM.update(Canvas.lDict, Mouse)
+            LyrM.update()
         if event.type == DELLAYER:
+            if len(Canvas.lDict) == 2:
+                prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, 
+                                    color_rgb(150, 150, 150), color_rgb(70, 70, 70), "cant delete layer")
+                continue
             Canvas.del_layer(Mouse.layer_selected)
-            LyrM.del_layer(Mouse)
-            LyrM.update(Canvas.lDict, Mouse)
+            LyrM.del_layer()
+            LyrM.update()
         if event.type == pygame.MOUSEBUTTONDOWN:
             Mouse.state["isDown"] = True
             Mouse.state["LWR"] = pygame.mouse.get_pressed()

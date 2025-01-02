@@ -58,13 +58,12 @@ class component:
             return False
         return True
 
-    def onClick(self, localMousePos): # <localMousePos> was used back when Mouse wasn't easily accesible (consider removing it)
+    def onClick(self, localMousePos):
         self.isClicked = True
-        highest = cmax(list(self.components.keys()))
-        for index in range(min(list(self.components.keys())), highest + 1):
-            if not self.components[index].contains(localMousePos):
+        for Component in self.components.values():
+            if not Component.contains(localMousePos):
                 continue
-            if self.components[index].onClick(): # Calls onClicks + checks if
+            if Component.onClick(sub( sub(localMousePos , self.localPos) , Component.localPos)): # Calls onClicks + checks if
                 break                            # the cycle should break (some buttons can alter <self.components>)
 
     def onRelease(self):
@@ -76,10 +75,41 @@ class component:
 
     def draw(self):
         self.surf.fill(self.stats["c"])
-        highest = cmax(list(self.components.keys()))
-        for index in range(highest + 1):
-            self.components[index].draw()
-            self.surf.blit(self.components[index].surf, self.components[index].localPos)
+        for Component in self.components.values():
+            Component.draw()
+            self.surf.blit(Component.surf, Component.localPos)
+
+
+class slide_panel(component):
+    def __init__(self, localPos, order, width, height, big_width, big_height, color, sliderBt, horizontal = False):
+        # Make sure <sliderBt> has order 0 (see <draw> method)
+        super().__init__(localPos, order, width, height, color)
+        self.big_width = big_width
+        self.big_height = big_height
+        self.cutoff = 0
+        self.horizontal = horizontal
+        self.slider = sliderBt
+        self.link_component(sliderBt)
+        sliderBt.draw()
+
+    def adjust(self, localPos: tuple[int, int]):
+        # Adjusts <localPos> by <self.cutoff>
+        x_o, y_o = localPos
+        if self.horizontal:
+            return (x_o - self.cutoff, y_o)
+        return (x_o, y_o - self.cutoff)
+
+    def draw(self):
+        self.surf.fill(self.stats['c'])
+        for Component in self.components.values(): # Todo: implement culling
+            Component.draw()
+            if Component.order == 0:
+                self.surf.blit(Component.surf, Component.localPos)
+                continue
+            self.surf.blit(Component.surf, self.adjust(Component.localPos))
+
+    def onClick(self, localMousePos):
+        return super().onClick(localMousePos)
 
 
 class template:
