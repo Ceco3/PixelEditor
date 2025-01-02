@@ -68,7 +68,7 @@ class layer:
 
 class canvas(template):
     def __init__(self, position, screen_w, width, screen_h, height, pix_dim, override = None) -> None:
-        super().__init__(position, screen_w, width, screen_h, height, color_rgb(0, 0, 0), color_rgb(50, 50, 50), override)
+        super().__init__(position, screen_w, width, screen_h, height, override, color_override=[[0, 0, 0], [50, 50, 50]])
         self.pix_w = pix_dim[0]
         self.pix_h = pix_dim[1]
         self.lDict: dict[int, layer] = {}

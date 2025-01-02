@@ -1,6 +1,7 @@
 from .Mouse import Mouse
 from .ComF import cmax
 from .Color import color_rgb
+from . import Settings
 
 import pygame
 
@@ -17,15 +18,19 @@ def SwitchIn_tDict(key_1, key_2):
 
 
 class component:
-    def __init__(self, localPos, order, width, height, color: color_rgb) -> None:
+    def __init__(self, localPos, order, width, height, color_override = None) -> None:
         self.localPos = localPos
         self.order = order
         self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
+        else:
+            colors = color_override
         self.stats = {
             "w" : width,
             "h" : height,
-            "c" : color.toTuple(),
+            "c" : colors[0],
             "s" : False
         }
         self.components: dict[int, component] = {}
@@ -34,10 +39,14 @@ class component:
     def renew_surf(self):
         self.surf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
 
-    def new_component(self, localPos, width, height, color):
+    def new_component(self, localPos, width, height, color_override = None):
+        if color_override is None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
+        else:
+            colors = color_override
         keys = list(self.components.keys())
         new_component_order = cmax(keys) + 1
-        self.components[new_component_order] = component(localPos, new_component_order, width, height, color)
+        self.components[new_component_order] = component(localPos, new_component_order, width, height, colors)
         self.components[new_component_order].master = self
         self.components[new_component_order].draw()
 
@@ -81,9 +90,9 @@ class component:
 
 
 class slide_panel(component):
-    def __init__(self, localPos, order, width, height, big_width, big_height, color, sliderBt, horizontal = False):
+    def __init__(self, localPos, order, width, height, big_width, big_height, sliderBt, horizontal = False, color_override = None):
         # Make sure <sliderBt> has order 0 (see <draw> method)
-        super().__init__(localPos, order, width, height, color)
+        super().__init__(localPos, order, width, height, color_override)
         self.big_width = big_width
         self.big_height = big_height
         self.cutoff = 0
@@ -113,7 +122,7 @@ class slide_panel(component):
 
 
 class template:
-    def __init__(self, position, master_w, width, master_h, height, color, frame_color, tDict_override = None) -> None:
+    def __init__(self, position, master_w, width, master_h, height, tDict_override = None, color_override = None) -> None:
         self.toggle = True
         if tDict_override is None:
             tDict[cmax(list(tDict.keys())) + 1] = self
@@ -122,23 +131,31 @@ class template:
         self.position = position
         self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Template"])
+        else:
+            colors = color_override
         self.stats = {
             "mw" : master_w,
             "w" : width,
             "mh" : master_h,
             "h" : height,
-            "c" : color.toTuple(),
-            "fc" : frame_color.toTuple(),
+            "c" : colors[0],
+            "fc" : colors[1],
         }
         self.components: dict[int, component] = {}
 
     def renew_surf(self):
         self.surf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
 
-    def new_component(self, localPos, width, height, color):
+    def new_component(self, localPos, width, height, color_override = None):
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
+        else:
+            colors = color_override
         keys = list(self.components.keys())
         new_component_order = cmax(keys) + 1
-        self.components[new_component_order] = component(localPos, new_component_order, width, height, color)
+        self.components[new_component_order] = component(localPos, new_component_order, width, height, colors)
         self.components[new_component_order].master = self
         self.components[new_component_order].draw()
         return self.components[new_component_order]

@@ -15,7 +15,7 @@ from SourceFiles.ComF import validate_string
 from SourceFiles.Prompt import prompt
 
 #____Palletes_____#
-BasicPL = pallete([10, 10], 0, 230, 250, color_rgb(170, 170, 170))
+BasicPL = pallete([10, 10], 0, 230, 250)
 BasicPL.new_color(color_rgba(155, 55, 100, 255))
 BasicPL.new_color(color_rgba(50, 155, 100, 255))
 BasicPL.new_color(color_rgba(100, 50, 155, 255))
@@ -37,27 +37,26 @@ Registry.Write("Char", "")
 
 
 #___SETTINGS___#
-Settings_ = settings((400, 150), Window.winX, 150, Window.winY, 60, color_rgb(120, 120, 120), color_rgb(70, 70, 70))
-NameBt = textBt((10, 10), 0, 400, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (11, 10))
+Settings_ = settings((400, 150), Window.winX, 150, Window.winY, 60)
+NameBt = textBt((10, 10), 0, 400, 30, textPos = (11, 10))
 def NameBtFn(NameBt: button):
     Settings.Set("Project", "Name", NameBt.stats["txt"])
 NameBt.attach(NameBtFn)
-NameTxt = text((420, 10), 1, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "project title", textPos = (0, 10))
-SaveDirBt = textBt((10, 50), 2, 400, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (11, 10))
-SaveDirTxt = text((420, 50), 3, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "save directory", textPos = (0, 10))
+NameTxt = text((420, 10), 1, 150, 30, "project title", textPos = (0, 10))
+SaveDirBt = textBt((10, 50), 2, 400, 30, textPos = (11, 10))
+SaveDirTxt = text((420, 50), 3, 150, 30, "save directory", textPos = (0, 10))
 def SaveDirBtFn(SaveDirBt: button):
     Settings.Set("User", ["Paths", "SaveDir"], SaveDirBt.stats["txt"])
 SaveDirBt.attach(SaveDirBtFn)
-CanvasXBt = textBt((10, 90), 4, 30, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (7, 10))
-CanvasXBtTxt = text((50, 90), 5, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "canvas width", textPos = (0, 10))
-CanvasYBt = textBt((10, 130), 6, 30, 30, color_rgb(80, 80, 80), color_rgb(70, 70, 70), color_rgb(200, 200, 200), textPos = (7, 10))
-CanvasYBtTxt = text((50, 130), 7, 150, 30, color_rgb(150, 150, 150), color_rgb(70, 70, 70), "canvas height", textPos = (0, 10))
+CanvasXBt = textBt((10, 90), 4, 30, 30, textPos = (7, 10))
+CanvasXBtTxt = text((50, 90), 5, 150, 30, "canvas width", textPos = (0, 10))
+CanvasYBt = textBt((10, 130), 6, 30, 30, textPos = (7, 10))
+CanvasYBtTxt = text((50, 130), 7, 150, 30, "canvas height", textPos = (0, 10))
 # These two functions are almost exactly the same (you might wanna do something about it) ((or you can't))
 def CanvasXBtFn(CanvasXBt: textBt):
     dimensions = Settings.Get("Project", "CanvasMeta")
     if not validate_string(CanvasXBt.stats["txt"]):
-        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, 
-                            color_rgb(150, 150, 150), color_rgb(70, 70, 70), "select valid size")
+        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "select valid size")
         return
     dimensions[0] = int(CanvasXBt.stats["txt"])
     Settings.Set("Project", "CanvasMeta", dimensions)
@@ -65,8 +64,7 @@ def CanvasXBtFn(CanvasXBt: textBt):
 def CanvasYBtFn(CanvasYBt: textBt):
     dimensions = Settings.Get("Project", "CanvasMeta")
     if not validate_string(CanvasYBt.stats["txt"]):
-        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, 
-                            color_rgb(150, 150, 150), color_rgb(70, 70, 70), "select valid size")
+        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "select valid size")
         return
     dimensions[1] = int(CanvasYBt.stats["txt"])
     Settings.Set("Project", "CanvasMeta", dimensions)
@@ -78,55 +76,56 @@ Settings_.components[0].link_multi(NameBt, NameTxt, SaveDirBt, SaveDirTxt, Canva
 
 
 #___CANVAS___#
-LyrM = layer_mngr([10, 310], 1, 230, 200, color_rgb(170, 170, 170))
+LyrM = layer_mngr([10, 310], 1, 230, 200)
 Registry.Write("LayerManager", LyrM)
-SaveBt = saveBt((10, 10), 0, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (11, 10))
-ExitBt = exitBt((80, 10), 1, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (11, 10))
-LoadBt = loadBt((10, 55), 2, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (11, 10))
-NewLBt = newLBt((10, 160), -1, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (15, 10))
-DelLBt = delLBt((80, 160), -2, 60, 30, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200), textPos = (15, 10))
+SaveBt = saveBt((10, 10), 0, 60, 30, textPos = (11, 10))
+ExitBt = exitBt((80, 10), 1, 60, 30, textPos = (11, 10))
+LoadBt = loadBt((10, 55), 2, 60, 30, textPos = (11, 10))
+NewLBt = newLBt((10, 160), -1, 60, 30, textPos = (15, 10))
+DelLBt = delLBt((80, 160), -2, 60, 30, textPos = (15, 10))
 
-Attelier = template((Window.winX - 300, 50), Window.winX, 250, Window.winY, 600, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
+Attelier = template((Window.winX - 300, 50), Window.winX, 250, Window.winY, 600)
 Attelier.link_component(BasicPL)
 Attelier.link_component(LyrM)
 Attelier.components[LyrM.order].link_component(NewLBt)
 Attelier.components[LyrM.order].link_component(DelLBt)
 
-Garage = template((50, 50), Window.winX, 300, Window.winY, 600, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
-BucketBt = toolBt((10, 10), 0, 50, 50, color_rgb(60, 60, 60), color_rgb(100, 100, 100), color_rgb(0, 0, 0), Bucket)
+Garage = template((50, 50), Window.winX, 300, Window.winY, 600)
+Garage_Colors = [[100, 100, 100], [60, 60, 60], [0, 0, 0]]
+BucketBt = toolBt((10, 10), 0, 50, 50, Bucket, color_override=Garage_Colors)
 BucketBt.loadIcon("Icons\Bucket.png")
-PencilBt = toolBt((70, 10), 1, 50, 50, color_rgb(60, 60, 60), color_rgb(100, 100, 100), color_rgb(0, 0, 0), Pencil)
+PencilBt = toolBt((70, 10), 1, 50, 50, Pencil, color_override=Garage_Colors)
 PencilBt.loadIcon("Icons\Pencil.png")
-VisBt = visBt((130, 10), 2, 50, 50, color_rgb(60, 60, 60), color_rgb(100, 100, 100), color_rgb(0, 0, 0))
+VisBt = visBt((130, 10), 2, 50, 50, color_override=Garage_Colors)
 VisBt.loadIcon("Icons\VISION.png")
-ReflectBt = button((10, 70), 3, 50, 50, color_rgb(60, 60, 60), color_rgb(100, 100, 100), color_rgb(0, 0, 0), "")
+ReflectBt = button((10, 70), 3, 50, 50, "", color_override=Garage_Colors)
 ReflectBt.loadIcon("Icons\Reflect.png")
 ReflectBt.attach(Reflect)
 
-Garage.new_component((10, 10), 280, 300, color_rgb(170, 170, 170))
+Garage.new_component((10, 10), 280, 300)
 Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, ReflectBt)
 Slider = sliderBt((10, 10), 0, 16, 50, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
-Archetype = slide_panel((10, 320), 1, 280, 270, 280, 600, color_rgb(170, 170, 170), Slider)
-Archetype.link_component(icon((100, 100), 1, 30, 30, color_rgb(100, 200, 100), color_rgb(100, 200, 100), "Icons/Python.png"))
+Archetype = slide_panel((10, 320), 1, 280, 270, 280, 600, Slider)
+Archetype.link_component(icon((100, 100), 1, 30, 30, "Icons/Python.png"))
 Garage.link_component(Archetype)
 
-Polish = template((450, 20), Window.winX, 700, Window.winY, 100, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
-Polish.new_component((0, 0), 200, 100, color_rgb(150, 150, 150))
+Polish = template((450, 20), Window.winX, 700, Window.winY, 100)
+Polish.new_component((0, 0), 200, 100, [[150, 150, 150]])
 Polish.components[0].link_component(SaveBt)
 Polish.components[0].link_component(ExitBt)
 Polish.components[0].link_component(LoadBt)
-OptionsSlide: component = Polish.new_component((500, 0), 200, 100, color_rgb(150, 150, 150))
-StngsBt = popupBt((150, 10), 0, 40, 40, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200))
+OptionsSlide: component = Polish.new_component((500, 0), 200, 100, [[150, 150, 150]])
+StngsBt = popupBt((150, 10), 0, 40, 40)
 StngsBt.SetValues(Settings_, (150, 60, 770, 400))
 StngsBt.loadIcon("Icons\Settings.png")
 OptionsSlide.link_component(StngsBt)
 
-Animator = template((40, 720), Window.winX, 1460, Window.winY, 300, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
-RollBt = rollBt((10, 10), 0, 40, 40, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200))
+Animator = template((40, 720), Window.winX, 1460, Window.winY, 300)
+RollBt = rollBt((10, 10), 0, 40, 40)
 RollBt.loadIcon("Icons\Go.png")
-FrameBt = frameBt((10, 60), 1, 40, 40, color_rgb(80, 80, 80), color_rgb(30, 30, 30), color_rgb(200, 200, 200))
+FrameBt = frameBt((10, 60), 1, 40, 40)
 FrameBt.loadIcon("Icons\Add.png")
-Control: component = Animator.new_component((0, 0), 300, 100, color_rgb(120, 120, 120))
+Control: component = Animator.new_component((0, 0), 300, 100, [[120, 120, 120]])
 Control.link_component(RollBt)
 Control.link_component(FrameBt)
 

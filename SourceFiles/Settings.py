@@ -79,9 +79,12 @@ def Show(setting_name: str | None) -> None:
 #
 # Designs : {
 #   "<Desing Name (e.g. "Light")>" : {
-#       "Template" : [<Color>, <fColor>],
-#       "Panel"    : [<Color>],
-#       "Buttons"  : [<Color>, <fColor>, <tColor>]
+#       "Template"   : [<Color>, <fColor>],
+#       "Panel"      : [<Color>],
+#       "Button"     : [<Color>, <fColor>, <tColor>]
+#       "Icon"       : [<Color>, <fColor>]
+#       "Text"       : [<Color>, <tColor>]
+#       "TextButton" : [<Color>, <fColor>, <tColor>]
 #       }
 # }
 #

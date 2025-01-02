@@ -4,6 +4,7 @@ from .Mouse import Mouse
 from .ComF import cmax, Lerp
 from .Color import color_rgb, color_rgba
 from .Meta import Updater, Registry
+from . import Settings
 
 # Forbidden Imports:
 # Prompt, Tapestry
@@ -24,9 +25,13 @@ DELLAYER = pygame.USEREVENT + 5
 DELLAYER_EV = pygame.event.Event(DELLAYER)
 
 class icon(component):
-    def __init__(self, localPos, order, width, height, color, fcolor: color_rgb, path, icon_pos = (0, 0)) -> None:
-        super().__init__(localPos, order, width, height, color)
-        self.stats["fc"] = fcolor.toTuple()
+    def __init__(self, localPos, order, width, height, path, icon_pos = (0, 0), color_override = None) -> None:
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Icon"])
+        else:
+            colors = color_override
+        super().__init__(localPos, order, width, height, colors)
+        self.stats["fc"] = colors[1]
         self.stats["ip"] = icon_pos
         self.icon_surf = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (width, height))
         self.draw()
@@ -39,9 +44,13 @@ class icon(component):
         self.surf.blit(self.icon_surf, self.stats["ip"])
 
 class text(component):
-    def __init__(self, localPos, order, width, height, color, tcolor, text, textPos = (0, 0)) -> None:
-        super().__init__(localPos, order, width, height, color)
-        self.stats["tc"] = tcolor.toTuple()
+    def __init__(self, localPos, order, width, height, text, textPos = (0, 0), color_override = None) -> None:
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Text"])
+        else:
+            colors = color_override
+        super().__init__(localPos, order, width, height, colors)
+        self.stats["tc"] = colors[1]
         self.stats["txt"] = text
         self.stats["txtp"] = textPos
         self.txt_surf = make_word(self.stats["txt"], self.stats["tc"])
@@ -56,12 +65,15 @@ class text(component):
 
 
 class button(component):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text, textPos = (0, 0)) -> None:
-        super().__init__(localPos, order, width, height, color)
+    def __init__(self, localPos, order, width, height, text, textPos = (0, 0), color_override = None) -> None:
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Button"])
+        else:
+            colors = color_override
+        super().__init__(localPos, order, width, height, colors)
         self.stats["f"] = True
-        self.stats["fc"] = fcolor.toTuple()
-        if tcolor is not None:
-            self.stats["tc"] = tcolor.toTuple()
+        self.stats["fc"] = colors[1]
+        self.stats["tc"] = colors[2]
         if text is not None:
             self.stats["txt"] = text
         if textPos is not None:
@@ -87,6 +99,11 @@ class button(component):
         if self.stats["f"]:
             self.highlight()
 
+    def get_colors(self, color_override):
+        if color_override == None:
+            return Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Button"])
+        return color_override
+
     def highlight(self):
         pygame.draw.rect(self.overlaySurf, (100, 100, 100, 100), pygame.Rect(5, 5, self.stats["w"] - 5, self.stats["h"] - 5))
         self.surf.blit(self.overlaySurf, (0, 0))
@@ -111,8 +128,9 @@ class button(component):
 
 
 class toolBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, tool, text = "", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, tool, text = "", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
         self.bound_tool = tool
 
     def onClick(self, localMousePos):
@@ -120,16 +138,18 @@ class toolBt(button):
         Mouse.tool = self.bound_tool
 
 class visBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
         Mouse.state["visualM"] = not Mouse.state["visualM"]
 
 class lyrBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "layer", textPos=(90, 12)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "layer", textPos=(90, 12), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
         self.stats["f"] = True
         self.overlaySurf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
 
@@ -151,48 +171,54 @@ class lyrBt(button):
         Mouse.layer_selected = self.order
 
 class newLBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "new", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "new", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
         pygame.event.post(NEWLAYER_EV)
 
 class delLBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "del", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "del", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
         pygame.event.post(DELLAYER_EV)
 
 class saveBt(button):
-    def __init__(self, localPos, order, width, height, color, fcolor, tcolor, text = "save", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, color, fcolor, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "save", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
         pygame.event.post(BUILD_EV)
 
 class exitBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "exit", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "exit", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         pygame.quit()
         sys.exit()
 
 class loadBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "load", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "load", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
         pygame.event.post(LOAD_EV)
 
 class rollBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
         self.toggle = False
         self.isLerping = False
         self.complete = 0
@@ -236,16 +262,18 @@ class rollBt(button):
             self.master.draw()
 
 class frameBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
         print(Registry.Read("Canvas").create_frame())
 
 class popupBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
+        colors = self.get_colors(color_override)
+        super().__init__(localPos, order, width, height, text, textPos, colors)
         self.speed = 1/30
         self.complete = 0
         self.toggle = False
@@ -315,7 +343,7 @@ class popupBt(button):
 
 class sliderBt(button):
     def __init__(self, localPos, order, width, height, fcolor, color, horizontal = False):
-        super().__init__(localPos, order, width, height, fcolor, color, None, None, None)
+        super().__init__(localPos, order, width, height, None, None, None)
         Updater.Add(self)
         self.sensitivity = 1
         self.horizontal = horizontal
@@ -357,8 +385,12 @@ class sliderBt(button):
             self.master.draw()
 
 class textBt(button):
-    def __init__(self, localPos, order, width, height, fcolor, color, tcolor, text = "", textPos=(0, 0)) -> None:
-        super().__init__(localPos, order, width, height, fcolor, color, tcolor, text, textPos)
+    def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
+        if color_override == None:
+            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "TextButton"])
+        else:
+            colors = color_override
+        super().__init__(localPos, order, width, height, text, textPos, colors)
         Updater.Add(self)
         self.toggle = False
         self.backspace_timer = 0

@@ -3,13 +3,19 @@ from .Color import color_rgb, color_rgba
 from .Mouse import Mouse
 from .Button import button, text, icon, sliderBt
 from .Window import Window, Clock
+from .Meta import Registry
 
 import pygame
 import sys, os
 
+# Forbidden Imports:
+#
+# Canvas
+
 #Prompt Id's
 LOAD_ID = 0
 ERROR_ID = 1
+REFLECT_ID = 2
 PROMPT_OVERRIDE = -1
 
 class prompt(template):
@@ -188,6 +194,31 @@ class prompt(template):
 
         Bt_Tx_tuples.append((OkBt, ErrorTx))
 
-        Prompt = prompt(position, Window.winX, width, Window.winY, height, color, fcolor, \
+        Prompt = prompt(position, Window.winX, width, Window.winY, height, color, fcolor,
                         Bt_Tx_tuples, attached_functions, None, ERROR_ID)
+        Prompt.prompt_loop()
+
+    #____________________Reflect_Prompt_______________________#
+    def reflect_prompt(self, position, width, height, color, fcolor, reflect_fn):
+        Bt_Tx_tuples = []
+        attached_functions = []
+
+        def RefVrtclBtFn(BtObject: button):
+            reflect_fn(False)
+        
+        def RefHrzntlBtFn(BtObject: button):
+            reflect_fn(True)
+
+        RefVrtclBt = button((10, 10), 0, 30, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200))
+        RefVrtclBt.attach(RefVrtclBtFn)
+        RefVrtclBt.loadIcon("Icons/Reflect.png")
+
+        RefHrzntlBt = button((10, 50), 1, 30, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200))
+        RefHrzntlBt.attach(RefHrzntlBtFn)
+        RefHrzntlBt.loadIcon("Icons/Reflect.png")
+
+        Bt_Tx_tuples.append((RefVrtclBt, RefHrzntlBt))
+
+        Prompt = prompt(position, Window.winX, width, Window.winY, height, height, color, fcolor,
+                        Bt_Tx_tuples, attached_functions, None, REFLECT_ID)
         Prompt.prompt_loop()

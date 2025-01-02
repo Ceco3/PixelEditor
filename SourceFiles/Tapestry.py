@@ -68,8 +68,8 @@ def bound(x, y):
     return y
 
 class pallete(component):
-    def __init__(self, localPos, order, width, height, color) -> None:
-        super().__init__(localPos, order, width, height, color)
+    def __init__(self, localPos, order, width, height) -> None:
+        super().__init__(localPos, order, width, height)
         self.iconSize = 30
         self.primary = {}
 
@@ -104,8 +104,8 @@ class pallete(component):
             pass
 
 class layer_mngr(component):
-    def __init__(self, localPos, order, width, height, color) -> None:
-        super().__init__(localPos, order, width, height, color)
+    def __init__(self, localPos, order, width, height) -> None:
+        super().__init__(localPos, order, width, height)
         self.stats["lyrBh"] = 25
         self.stats["lyrBw"] = 215
         self.build()
@@ -135,8 +135,9 @@ class layer_mngr(component):
 
     def new_layer(self):
         most = cmax(list(self.components.keys()))
+        color_override = [[150, 150, 150], [150, 150, 150], [200, 200, 200]]
         self.components[most + 1] = lyrBt((5, (self.stats["lyrBh"] + 1) * (most) + 5), most + 1, self.stats["lyrBw"], self.stats["lyrBh"],
-                                           color_rgb(150, 150, 150), color_rgb(150, 150, 150), color_rgb(200, 200, 200), textPos=(90, 10))
+                                           textPos=(90, 10), color_override=color_override)
 
     def draw(self):
         self.surf.fill(self.stats["c"])
@@ -149,8 +150,8 @@ class layer_mngr(component):
                 self.surf.blit(component.surf, component.localPos)
 
 class settings(template):
-    def __init__(self, position, master_w, width, master_h, height, color, frame_color) -> None:
-        super().__init__(position, master_w, width, master_h, height, color, frame_color)
+    def __init__(self, position, master_w, width, master_h, height) -> None:
+        super().__init__(position, master_w, width, master_h, height)
         self.toggle = False
-        self.new_component((0, 0), width, height, color_rgb(150, 150, 150))
+        self.new_component((0, 0), width, height)
         Registry.Write("Settings", self)
