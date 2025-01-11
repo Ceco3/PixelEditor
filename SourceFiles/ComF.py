@@ -28,3 +28,11 @@ def validate_string(input: str) -> bool:
         return False
     
     return True
+
+def pair_sum(*tuples):
+    x, y = 0, 0
+    for tpl in tuples:
+        a, b = tpl
+        x += a
+        y += b
+    return (x, y)

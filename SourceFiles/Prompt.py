@@ -19,11 +19,11 @@ REFLECT_ID = 2
 PROMPT_OVERRIDE = -1
 
 class prompt(template):
-    def __init__(self, position, master_w, width, master_h, height, color, frame_color,
+    def __init__(self, position, master_w, width, master_h, height,
                  buttons_text_tuples: list[tuple[button, text]], attached_functions, constructor,
-                 id, override = PROMPT_OVERRIDE):
-        super().__init__(position, master_w, width, master_h, height, color, frame_color, override)
-        self.panel = self.new_component((0, 0), width, height, color_rgb(150, 150, 150))
+                 id, override = PROMPT_OVERRIDE, color_override = None):
+        super().__init__(position, master_w, width, master_h, height, override, color_override)
+        self.panel = self.new_component((0, 0), width, height)
         self.isAlive = True
         self.Bt_Tx_tuples = buttons_text_tuples
         self.populate_panel()
@@ -74,7 +74,7 @@ class prompt(template):
     #________________________________________________________#
 
     #____________________Load_Prompt_________________________#
-    def load_prompt(self, postition, width, height, color, frame_color):
+    def load_prompt(self, postition, width, height, color_override = None):
         buttons_text_tuples = []
         attached_functions = []
 
@@ -96,23 +96,22 @@ class prompt(template):
                 return True # The panel.component dict was changed from inside the onClick for-loop,
                             # So we have to signal it to break the cycle (Implement other soln?)
 
-        CloseBt = button((10, height - 40), 0, 90, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200), "close", (11, 10))
+        CloseBt = button((10, height - 40), 0, 90, 30, "close", (11, 10))
         CloseBt.attach(CloseFn)
         buttons_text_tuples.append((CloseBt, None))
 
-        LoadBt = button((width - 100, height - 40), 1, 90, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200), "load", (11, 10))
+        LoadBt = button((width - 100, height - 40), 1, 90, 30, "load", (11, 10))
         LoadBt.attach(LoadFn)
         buttons_text_tuples.append((LoadBt, None))
 
-        directoryBt = button((10, 10), 2, 300, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200),
-                                "Gallery", (11, 10))
+        directoryBt = button((10, 10), 2, 300, 30, "Gallery", (11, 10))
         directoryBt.attach(rootBtFn)
         buttons_text_tuples.append((directoryBt, None))
                     
         attached_functions.append(prompt.load_prompt_graphics)
 
-        Prompt = prompt(postition, Window.winX, width, Window.winY, height, color, frame_color, \
-                        buttons_text_tuples, attached_functions, prompt.load_constructor, LOAD_ID)
+        Prompt = prompt(postition, Window.winX, width, Window.winY, height,
+                        buttons_text_tuples, attached_functions, prompt.load_constructor, LOAD_ID, color_override)
         Prompt.prompt_loop()
         if Prompt.doRetrieve:
             return Prompt.retrieve()
@@ -120,10 +119,9 @@ class prompt(template):
 
     def load_constructor(self):
         self.doRetrieve = False
-        self.currLoadDir: str = "./Gallery"
-        slider = sliderBt((10, 10), 0, 16, 50, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
-        SlidePanel = slide_panel((0, 50), 3, self.stats['w'], self.stats['h'] - 100, self.stats['w'], (self.stats['h']),
-                                  color_rgb(150, 150, 150), slider)
+        self.currLoadDir: str = "."
+        slider = sliderBt((10, 10), 0, 16, 50)
+        SlidePanel = slide_panel((0, 50), 3, self.stats['w'], self.stats['h'] - 100, self.stats['w'], (self.stats['h']), slider)
         self.slide_panel = SlidePanel
         self.panel.link_component(self.slide_panel)
         self.load_prompt_graphics()
@@ -157,9 +155,7 @@ class prompt(template):
                 if item.name.startswith('.'):
                     invalid_files_cntr += 1
                     continue
-                fileBt = button((50, 20 + (i - invalid_files_cntr) * 40), i * 2 - invalid_files_cntr * 2 + 1, 300, 30,
-                                color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200),
-                                                item.name, (11, 10))
+                fileBt = button((50, 20 + (i - invalid_files_cntr) * 40), i * 2 - invalid_files_cntr * 2 + 1, 300, 30, item.name, (11, 10))
                 if item.is_file():
                     fileBt.attach(fileBtFn)
                     if ".png" in item.name:
@@ -173,33 +169,30 @@ class prompt(template):
                 if item.is_dir():
                     fileBt.attach(dirBtFn)
                     iconPath = "./Icons/Directory.png"
-                fileIcon = icon((50 + 310, 20 + (i - invalid_files_cntr) * 40), i * 2 - invalid_files_cntr * 2 + 2, 30, 30,
-                                color_rgb(150, 150, 150), color_rgb(120, 120, 120), iconPath)
+                fileIcon = icon((50 + 310, 20 + (i - invalid_files_cntr) * 40), i * 2 - invalid_files_cntr * 2 + 2, 30, 30, iconPath)
                 self.slide_panel.link_multi(fileBt, fileIcon)
             self.panel.draw()
 
     #______________________Error_Prompt_______________________#
-    def error_prompt(self, position, width, height, color, fcolor, error_message = "error occured"):
+    def error_prompt(self, position, width, height, error_message = "error occured", color_override = None):
         Bt_Tx_tuples = []
         attached_functions = []
 
         def OkBtFn(BtObject: button):
             Prompt.kill()
 
-        OkBt = button((width - 70, height - 40), 0, 60, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200), \
-                      "ok", (11, 10))
+        OkBt = button((width - 70, height - 40), 0, 60, 30, "ok", (11, 10))
         OkBt.attach(OkBtFn)
 
-        ErrorTx = text((-150 + width // 2 ,-30 + height // 2), 1, 300, 30, color, color_rgb(70, 70, 70), error_message, (11, 10))
+        ErrorTx = text((-150 + width // 2 ,-30 + height // 2), 1, 300, 30, error_message, (11, 10))
 
         Bt_Tx_tuples.append((OkBt, ErrorTx))
 
-        Prompt = prompt(position, Window.winX, width, Window.winY, height, color, fcolor,
-                        Bt_Tx_tuples, attached_functions, None, ERROR_ID)
+        Prompt = prompt(position, Window.winX, width, Window.winY, height, Bt_Tx_tuples, attached_functions, None, ERROR_ID, color_override=color_override)
         Prompt.prompt_loop()
 
     #____________________Reflect_Prompt_______________________#
-    def reflect_prompt(self, position, width, height, color, fcolor, reflect_fn):
+    def reflect_prompt(self, position, width, height, reflect_fn, color_override = None):
         Bt_Tx_tuples = []
         attached_functions = []
 
@@ -209,16 +202,16 @@ class prompt(template):
         def RefHrzntlBtFn(BtObject: button):
             reflect_fn(True)
 
-        RefVrtclBt = button((10, 10), 0, 30, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200))
+        RefVrtclBt = button((10, 10), 0, 30, 30)
         RefVrtclBt.attach(RefVrtclBtFn)
         RefVrtclBt.loadIcon("Icons/Reflect.png")
 
-        RefHrzntlBt = button((10, 50), 1, 30, 30, color_rgb(70, 70, 70), color_rgb(120, 120, 120), color_rgb(200, 200, 200))
+        RefHrzntlBt = button((10, 50), 1, 30, 30)
         RefHrzntlBt.attach(RefHrzntlBtFn)
         RefHrzntlBt.loadIcon("Icons/Reflect.png")
 
         Bt_Tx_tuples.append((RefVrtclBt, RefHrzntlBt))
 
-        Prompt = prompt(position, Window.winX, width, Window.winY, height, height, color, fcolor,
-                        Bt_Tx_tuples, attached_functions, None, REFLECT_ID)
+        Prompt = prompt(position, Window.winX, width, Window.winY, height,
+                        Bt_Tx_tuples, attached_functions, None, REFLECT_ID, color_override=color_override)
         Prompt.prompt_loop()

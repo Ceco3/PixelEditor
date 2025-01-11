@@ -1,21 +1,23 @@
 import pygame
 import sys
 
-from SourceFiles.Canvas import Canvas, Pencil, Bucket, Reflect, rescale_canvas
+from SourceFiles.Canvas import Canvas, Pencil, Bucket, rescale_canvas
 from SourceFiles.Color import color_rgba, color_rgb
-from SourceFiles.Tapestry import pallete, layer_mngr, build, load, settings, AUTOSAVE, AUTOSAVE_EV
+from SourceFiles.Tapestry import pallete, color_picker, layer_mngr, settings, AUTOSAVE, AUTOSAVE_EV, selection, load
 from SourceFiles.Template import template, component, slide_panel, tDict, SwitchIn_tDict
 from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
-from SourceFiles.Button import saveBt, exitBt, loadBt, newLBt, delLBt, toolBt, visBt, rollBt, frameBt, button, textBt, text, popupBt, \
-    sliderBt, icon, BUILD, LOAD, NEWLAYER, DELLAYER
-from SourceFiles.ComF import validate_string
+from SourceFiles.Button import toolBt, rollBt, button, textBt, text, popupBt, sliderBt, icon
+from SourceFiles.ComF import validate_string, pair_sum
 from SourceFiles.Prompt import prompt
+from SourceFiles.Functions import BUILD, LOAD, NEWLAYER, DELLAYER, SaveBtFn, ExitBtFn, SaveStngsBtFn, LoadBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
+    PlusFrmBtFn, ReflectX, ReflectY, build_canvas, AvalanadiaBtFn
+                               
 
 #____Palletes_____#
-BasicPL = pallete([10, 10], 0, 230, 250)
+BasicPL = pallete([10, 10], 0, 230, 150)
 BasicPL.new_color(color_rgba(155, 55, 100, 255))
 BasicPL.new_color(color_rgba(50, 155, 100, 255))
 BasicPL.new_color(color_rgba(100, 50, 155, 255))
@@ -31,6 +33,8 @@ BasicPL.new_color(color_rgba(150, 140, 150, 255))
 BasicPL.new_color(color_rgba(0, 1, 0, 255))
 BasicPL.new_color(color_rgba(230, 20, 55, 255))
 BasicPL.new_color(color_rgba(10, 150, 40, 255))
+
+Color_picker = color_picker((10, 170), 1, 230, 130, BasicPL)
 
 Registry.Write("Char", "")
 
@@ -71,22 +75,22 @@ def CanvasYBtFn(CanvasYBt: textBt):
     rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
 CanvasXBt.attach(CanvasXBtFn)
 CanvasYBt.attach(CanvasYBtFn)
+SaveStngsBt = button((720, 370), 8, 60, 30, "save", (11, 10), attachFn=SaveStngsBtFn)
 Settings_.components[0].link_multi(NameBt, NameTxt, SaveDirBt, SaveDirTxt, CanvasXBt, CanvasXBtTxt,
-                                   CanvasYBt, CanvasYBtTxt)
+                                   CanvasYBt, CanvasYBtTxt, SaveStngsBt)
 
 
 #___CANVAS___#
-LyrM = layer_mngr([10, 310], 1, 230, 200)
+LyrM = layer_mngr([10, 310], 2, 230, 200)
 Registry.Write("LayerManager", LyrM)
-SaveBt = saveBt((10, 10), 0, 60, 30, textPos = (11, 10))
-ExitBt = exitBt((80, 10), 1, 60, 30, textPos = (11, 10))
-LoadBt = loadBt((10, 55), 2, 60, 30, textPos = (11, 10))
-NewLBt = newLBt((10, 160), -1, 60, 30, textPos = (15, 10))
-DelLBt = delLBt((80, 160), -2, 60, 30, textPos = (15, 10))
+SaveBt = button((10, 10), 0, 60, 30, "save", textPos = (11, 10), attachFn=SaveBtFn)
+ExitBt = button((80, 10), 1, 60, 30, "exit",textPos = (11, 10), attachFn=ExitBtFn)
+LoadBt = button((10, 55), 2, 60, 30, "load", textPos = (11, 10), attachFn=LoadBtFn)
+NewLBt = button((10, 160), -1, 60, 30, "new", textPos = (15, 10), attachFn=NewLBtFn)
+DelLBt = button((80, 160), -2, 60, 30, "del", textPos = (15, 10), attachFn=DelLBtFn)
 
 Attelier = template((Window.winX - 300, 50), Window.winX, 250, Window.winY, 600)
-Attelier.link_component(BasicPL)
-Attelier.link_component(LyrM)
+Attelier.link_multi(BasicPL, Color_picker, LyrM)
 Attelier.components[LyrM.order].link_component(NewLBt)
 Attelier.components[LyrM.order].link_component(DelLBt)
 
@@ -96,15 +100,20 @@ BucketBt = toolBt((10, 10), 0, 50, 50, Bucket, color_override=Garage_Colors)
 BucketBt.loadIcon("Icons\Bucket.png")
 PencilBt = toolBt((70, 10), 1, 50, 50, Pencil, color_override=Garage_Colors)
 PencilBt.loadIcon("Icons\Pencil.png")
-VisBt = visBt((130, 10), 2, 50, 50, color_override=Garage_Colors)
+VisBt = button((130, 10), 2, 50, 50, color_override=Garage_Colors, attachFn=VisBtFn)
 VisBt.loadIcon("Icons\VISION.png")
-ReflectBt = button((10, 70), 3, 50, 50, "", color_override=Garage_Colors)
+AvaBt = button((10, 130), 4, 50, 50, attachFn=AvalanadiaBtFn)
+AvaBt.loadIcon("Icons\Avalandia.png")
+ReflectBt = popupBt((10, 70), 3, 50, 50, color_override=Garage_Colors)
 ReflectBt.loadIcon("Icons\Reflect.png")
-ReflectBt.attach(Reflect)
 
 Garage.new_component((10, 10), 280, 300)
-Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, ReflectBt)
-Slider = sliderBt((10, 10), 0, 16, 50, color_rgb(150, 150, 150), color_rgb(70, 70, 70))
+Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, AvaBt, ReflectBt)
+x_o, y_o = pair_sum(ReflectBt.localPos, ReflectBt.master.localPos, ReflectBt.master.master.position)
+print(x_o, y_o)
+RefSelection = selection((x_o + 60, y_o - 35), Window.winX, Window.winY, [ReflectX, ReflectY], 30, 0)
+ReflectBt.SetValues(RefSelection, (100, 100, 200, 200))
+Slider = sliderBt((10, 10), 0, 16, 50)
 Archetype = slide_panel((10, 320), 1, 280, 270, 280, 600, Slider)
 Archetype.link_component(icon((100, 100), 1, 30, 30, "Icons/Python.png"))
 Garage.link_component(Archetype)
@@ -123,9 +132,9 @@ OptionsSlide.link_component(StngsBt)
 Animator = template((40, 720), Window.winX, 1460, Window.winY, 300)
 RollBt = rollBt((10, 10), 0, 40, 40)
 RollBt.loadIcon("Icons\Go.png")
-FrameBt = frameBt((10, 60), 1, 40, 40)
+FrameBt = button((10, 60), 1, 40, 40, attachFn=PlusFrmBtFn)
 FrameBt.loadIcon("Icons\Add.png")
-Control: component = Animator.new_component((0, 0), 300, 100, [[120, 120, 120]])
+Control: component = Animator.new_component((0, 0), 60, 110)
 Control.link_component(RollBt)
 Control.link_component(FrameBt)
 
@@ -144,13 +153,9 @@ while True:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+            ExitBtFn()
         if event.type == BUILD:
-            print(Settings.Get("User", "Paths")["SaveDir"])
-            print(Settings.Get("Project", "Name"))
-            build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", "Paths")["SaveDir"], Settings.Get("Project", "Name"))
-            Settings.Set("Project", "Canvas", Canvas.get_raw())
+            build_canvas()
         if event.type == LOAD:
             Canvas.lDict[Mouse.layer_selected].grid = load()
             Canvas.lDict[Mouse.layer_selected].draw()

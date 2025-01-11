@@ -7,6 +7,7 @@ class mouse:
         self.color = color_rgba(10, 150, 40, 255)
         self.tool = None
         self.layer_selected = 1
+        self.frame_uid = 0
         self.state = {
             "isDown" : False,
             "LWR" : (False, False, False),

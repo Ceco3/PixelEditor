@@ -28,6 +28,18 @@ class layer:
         }
         self.build()
 
+    def get_raw(self) -> dict[int, list[tuple[int, int, int, int]]]:
+        res = {}
+        i = 0
+        for row in self.grid:
+            res[i] = []
+            j = 0
+            for pixel in row:
+                res[i].append(pixel.toTuple())
+                j += 1
+            i += 1
+        return res
+
     def build(self):
         for _ in range(self.pix_h):
             arr = []
@@ -80,13 +92,13 @@ class canvas(template):
 
         self.new_layer()
 
-    def get_raw(self) -> dict[str, list[list[color_rgba]]]:
+    def get_raw(self) -> dict[str, list[list[tuple[int, int, int, int]]]]:
         "keys are strings for compatibility with json"
         res = {}
         for key_, layer_ in self.lDict.items():
             if key_ == 0:
                 continue
-            res[key_] = layer_.grid
+            res[key_] = layer_.get_raw()
         return res
 
     def new_layer(self):

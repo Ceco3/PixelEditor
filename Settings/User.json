@@ -2,9 +2,10 @@
     "Paths": {
         "Home": "C:\\Users\\rasce\\OneDrive\\projects\\Python\\PixelEditor",
         "SaveDir": "Gallery",
-        "LoadDir": "Gallery"
+        "LoadDir": "Gallery",
+        "FrameBuffer": "FrameBuffer"
     },
-    "Design": "Light",
+    "Design": "Dark",
     "Designs": {
         "Light": {
             "Template"   : [[150, 150, 150], [70, 70, 70]],
@@ -31,5 +32,5 @@
             "TextButton" : [[40, 10, 170], [80, 180, 140], [100, 10, 150]]   
         }
     },
-    "AutoSave": 1000000
+    "AutoSave": 1000000000
 }

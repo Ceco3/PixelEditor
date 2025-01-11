@@ -23,10 +23,7 @@ class component:
         self.order = order
         self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-        if color_override == None:
-            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
-        else:
-            colors = color_override
+        colors = self.get_colors(color_override)
         self.stats = {
             "w" : width,
             "h" : height,
@@ -40,10 +37,7 @@ class component:
         self.surf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
 
     def new_component(self, localPos, width, height, color_override = None):
-        if color_override is None:
-            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
-        else:
-            colors = color_override
+        colors = self.get_colors(color_override)
         keys = list(self.components.keys())
         new_component_order = cmax(keys) + 1
         self.components[new_component_order] = component(localPos, new_component_order, width, height, colors)
@@ -88,6 +82,11 @@ class component:
             Component.draw()
             self.surf.blit(Component.surf, Component.localPos)
 
+    def get_colors(self, color_override):
+        if color_override == None:
+            return Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
+        return color_override
+
 
 class slide_panel(component):
     def __init__(self, localPos, order, width, height, big_width, big_height, sliderBt, horizontal = False, color_override = None):
@@ -131,10 +130,7 @@ class template:
         self.position = position
         self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-        if color_override == None:
-            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Template"])
-        else:
-            colors = color_override
+        colors = self.get_colors(color_override)
         self.stats = {
             "mw" : master_w,
             "w" : width,
@@ -149,13 +145,9 @@ class template:
         self.surf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
 
     def new_component(self, localPos, width, height, color_override = None):
-        if color_override == None:
-            colors = Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Panel"])
-        else:
-            colors = color_override
         keys = list(self.components.keys())
         new_component_order = cmax(keys) + 1
-        self.components[new_component_order] = component(localPos, new_component_order, width, height, colors)
+        self.components[new_component_order] = component(localPos, new_component_order, width, height, component.get_colors(None, color_override))
         self.components[new_component_order].master = self
         self.components[new_component_order].draw()
         return self.components[new_component_order]
@@ -164,6 +156,10 @@ class template:
         self.components[Component.order] = Component
         Component.master = self
         Component.draw()
+
+    def link_multi(self, *args: 'component'):
+        for arg in args:
+            self.link_component(arg)
 
     def contains(self, position):
         if position[0] < self.position[0] + 2 or position[0] >  self.position[0] + self.stats["w"] - 2:
@@ -186,6 +182,11 @@ class template:
                 continue
             Component.onRelease()
     
+    def get_colors(self, color_override):
+        if color_override == None:
+            return Settings.Get("User", ["Designs", Settings.Get("User", "Design"), "Template"])
+        return color_override
+
     def display(self, master_surf: pygame.Surface):
         # self.surf.fill(self.stats["c"])
 
