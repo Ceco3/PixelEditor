@@ -4,6 +4,13 @@ def Lerp(a: float, b: float, c: float) -> float:
     "c indicates how done you are"
     return a + (b - a) * c
 
+def Clamp(min: float, max: float, preffered: float) -> float:
+    if min > preffered:
+        return min
+    if max < preffered:
+        return max
+    return preffered
+
 def ClampMin(min: int, preffered: int) -> int:
     if preffered < min:
         return min

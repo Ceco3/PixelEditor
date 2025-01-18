@@ -22,7 +22,7 @@ class component:
         self.localPos = localPos
         self.order = order
         self.isClicked = False
-        self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
+        self.surf: pygame.Surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
         colors = self.get_colors(color_override)
         self.stats = {
             "w" : width,
@@ -100,12 +100,19 @@ class slide_panel(component):
         self.link_component(sliderBt)
         sliderBt.draw()
 
-    def adjust(self, localPos: tuple[int, int]):
+    def adjust(self, localPos: tuple[int, int]) -> tuple[int, int]:
         # Adjusts <localPos> by <self.cutoff>
         x_o, y_o = localPos
         if self.horizontal:
             return (x_o - self.cutoff, y_o)
         return (x_o, y_o - self.cutoff)
+
+    def adjust_plus(self, localPos: tuple[int, int]) -> tuple[int, int]:
+        x_o, y_o = localPos
+        if self.horizontal:
+            return (x_o + self.cutoff, y_o)
+        print(x_o, y_o + self.cutoff)
+        return (x_o, y_o + self.cutoff)
 
     def draw(self):
         self.surf.fill(self.stats['c'])
@@ -117,17 +124,17 @@ class slide_panel(component):
             self.surf.blit(Component.surf, self.adjust(Component.localPos))
 
     def onClick(self, localMousePos):
-        return super().onClick(localMousePos)
+        return super().onClick(self.adjust_plus(localMousePos))
 
 
 class template:
     def __init__(self, position, master_w, width, master_h, height, tDict_override = None, color_override = None) -> None:
         self.toggle = True
         if tDict_override is None:
-            tDict[cmax(list(tDict.keys())) + 1] = self
-        else:
-            tDict[tDict_override] = self
-        self.position = position
+            tDict_override = cmax(list(tDict.keys())) + 1
+        tDict[tDict_override] = self
+        self.order = tDict_override
+        self.position: tuple[int, int] = position
         self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
         colors = self.get_colors(color_override)

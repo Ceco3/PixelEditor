@@ -1,18 +1,19 @@
 from .Color import color_rgba, color_rgb
 from .Template import template, cmax
-from .Meta import Registry
+from .Meta import Registry, Updater
 from .Window import Window
 from .Mouse import Mouse
 from . import Settings
-import pygame
 
 # Forbidden Imports:
 # Tapestry
 
+import pygame
 import copy
 
 class layer:
     def __init__(self, order, width, pix_w, height, pix_h) -> None:
+        Updater.Add(self)
         self.order = order
         self.width = width
         self.height = height
@@ -26,9 +27,23 @@ class layer:
             "size": pix_w * pix_h,
             (0, 0, 0, 0): pix_w * pix_h
         }
+        self.lasso_volume: set[tuple[int, int]] = set()
         self.build()
 
+    def Update(self):
+        "Expensive O(n^2)"
+        # Find better implementation?
+        if Mouse.tool != Lasso or not Lasso.isUsed or Mouse.layer_selected != self.order:
+            return
+        
+        o_x, o_y = Lasso.origin
+        w, h = Lasso.dimensions
+        for l_y in range(o_y, o_y + h):
+            for l_x in range(o_x, o_x + w):
+                self.lasso_volume.add((l_x, l_y))
+
     def get_raw(self) -> dict[int, list[tuple[int, int, int, int]]]:
+        "Expensive O(n^2)"
         res = {}
         i = 0
         for row in self.grid:
@@ -59,7 +74,13 @@ class layer:
     def draw(self):
         for y in range(self.pix_h):
             for x in range(self.pix_w):
-                pygame.draw.rect(self.surf, self.grid[y][x].toTuple(), pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h, self.width / self.pix_w, self.height / self.pix_h))
+                if (x, y) in self.lasso_volume:
+                    pygame.draw.rect(self.surf, (self.grid[y][x] + Lasso.select_volume_color).toTuple(),
+                                      pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h,
+                                                  self.width / self.pix_w, self.height / self.pix_h))
+                else:
+                    pygame.draw.rect(self.surf, self.grid[y][x].toTuple(), pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h,
+                                                                                    self.width / self.pix_w, self.height / self.pix_h))
 
     def change_pixel(self, pixelPos, newColor: color_rgba):
         "PixelPos is in (x, y) form x,y are ints"
@@ -72,6 +93,20 @@ class layer:
         self.grid[y][x] = newColor
         # self.draw()
 
+    def reload_color_data(self):
+        "Expensive O(n^2)"
+
+        self.color_data = {
+            "size" : self.pix_w * self.pix_h
+        }
+
+        for y in range(self.pix_h):
+            for x in range(self.pix_w):
+                color_xy = self.grid[y][x].toTuple()
+                if color_xy not in self.color_data:
+                    self.color_data[color_xy] = 0
+                self.color_data[color_xy] += 1
+
     def show(self):
         for i in range(self.pix_h):
             for j in range(self.pix_w):
@@ -79,8 +114,8 @@ class layer:
 
 
 class canvas(template):
-    def __init__(self, position, screen_w, width, screen_h, height, pix_dim, override = None) -> None:
-        super().__init__(position, screen_w, width, screen_h, height, override, color_override=[[0, 0, 0], [50, 50, 50]])
+    def __init__(self, position, width, height, pix_dim, tDict_override = None, color_override = None) -> None:
+        super().__init__(position, Window.winX, width, Window.winY, height, tDict_override, color_override=[[0, 0, 0], [50, 50, 50]])
         self.pix_w = pix_dim[0]
         self.pix_h = pix_dim[1]
         self.lDict: dict[int, layer] = {}
@@ -142,11 +177,6 @@ class canvas(template):
         if len(Mouse.occupation) > 1:
             return
 
-        if Mouse.state["LWR"][2]:
-            self.lDict[Mouse.layer_selected].change_pixel(self.transform(Mouse.position), color_rgba())
-            lyr_mngr.update()
-            return
-
         if Mouse.state["visualM"]:
             Mouse.tool.onUseVisual(self.transform(Mouse.position), tDict, screen)
         else:
@@ -154,10 +184,16 @@ class canvas(template):
         #self.lDict[mouse.layer_selected].change_pixel(self.transform(mouse.position), mouse.color)
         lyr_mngr.update()
 
-Canvas = canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, \
-                Settings.Get("Project", "CanvasMeta"))
+Canvas = canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), 500, 500, Settings.Get("Project", "CanvasMeta"))
 
 
+def new_canvas(position: tuple[int, int], width, height, pix_dim: tuple[int, int], tDict_override = None, color_override = None):
+    global Canvas
+    Canvas = canvas(position, width, height, pix_dim, tDict_override, color_override)
+
+def switch_canvas(new_canvas: canvas):
+    global Canvas
+    Canvas = new_canvas
 
 def aux_rescale_x(Layer: layer, new_pix_w: int, isGreater: bool) -> None:
     for row_idx in range(len(Layer.grid)):
@@ -217,10 +253,10 @@ def Reflect(BtObject, horizontal: bool):
 
         if not horizontal:
             new_grid = []
-            for i in range(Layer.pix_w):
+            for i in range(Layer.pix_h):
                 arr = []
-                for j in range(Layer.pix_h):
-                    arr.append(Layer.grid[i][-j - 1])
+                for j in range(Layer.pix_w):
+                    arr.append(Layer.grid[-i - 1][j])
                 new_grid.append(arr)
         
             Layer.grid = new_grid
@@ -242,6 +278,9 @@ class pencil(tool):
         super().__init__()
 
     def onUse(self, transformed_position, tDict = None, screen = None):
+        if Mouse.state["LWR"][2]:
+            Canvas.lDict[Mouse.layer_selected].change_pixel(Canvas.transform(Mouse.position), color_rgba())
+            return
         Canvas.lDict[Mouse.layer_selected].change_pixel(transformed_position, Mouse.color)
 
 Pencil = pencil()
@@ -322,3 +361,32 @@ class bucket(tool):
             active.pop(0)
 
 Bucket = bucket()
+
+class lasso(tool):
+    def __init__(self):
+        Updater.Add(self)
+        super().__init__()
+        self.origin: tuple[int, int] = ()
+        self.dimensions:tuple[int, int] = ()
+        self.isUsed: bool = False
+        self.select_volume_color = color_rgba(60, 60, 60, 60)
+
+    def onUse(self, transformed_position, tDict = None, screen = None):
+        if Mouse.state["LWR"][2]:
+            self.isUsed = False
+            self.origin = ()
+            self.dimensions = ()
+            return
+        self.isUsed = True
+        self.origin = transformed_position
+        self.dimensions = transformed_position
+    
+    def Update(self):
+        if not self.isUsed:
+            return
+        
+        m_x, m_y = Canvas.transform(Mouse.position)
+        o_x, o_y = self.origin
+        self.dimensions = (m_x - o_x, m_y - o_y)
+
+Lasso = lasso()

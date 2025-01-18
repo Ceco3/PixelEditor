@@ -1,9 +1,9 @@
 import pygame
 import sys
 
-from SourceFiles.Canvas import Canvas, Pencil, Bucket, rescale_canvas
+from SourceFiles.Canvas import Canvas, Pencil, Bucket, Lasso, rescale_canvas
 from SourceFiles.Color import color_rgba, color_rgb
-from SourceFiles.Tapestry import pallete, color_picker, layer_mngr, settings, AUTOSAVE, AUTOSAVE_EV, selection, load
+from SourceFiles.Tapestry import color_picker, layer_mngr, frame_mngr, AUTOSAVE, AUTOSAVE_EV, selection, load_pallete, load
 from SourceFiles.Template import template, component, slide_panel, tDict, SwitchIn_tDict
 from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
@@ -15,33 +15,20 @@ from SourceFiles.Prompt import prompt
 from SourceFiles.Functions import BUILD, LOAD, NEWLAYER, DELLAYER, SaveBtFn, ExitBtFn, SaveStngsBtFn, LoadBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
     PlusFrmBtFn, ReflectX, ReflectY, build_canvas, AvalanadiaBtFn
                                
+Pallete = load_pallete("Testing")
+Pallete.localPos = (10, 10)
 
-#____Palletes_____#
-BasicPL = pallete([10, 10], 0, 230, 150)
-BasicPL.new_color(color_rgba(155, 55, 100, 255))
-BasicPL.new_color(color_rgba(50, 155, 100, 255))
-BasicPL.new_color(color_rgba(100, 50, 155, 255))
-BasicPL.new_color(color_rgba(200, 150, 55, 255))
-BasicPL.new_color(color_rgba(150, 100, 40, 255))
-BasicPL.new_color(color_rgba(100, 50, 0, 255))
-BasicPL.new_color(color_rgba(0, 150, 255, 255))
-BasicPL.new_color(color_rgba(100, 0, 50, 255))
-BasicPL.new_color(color_rgba(120, 150, 90, 255))
-BasicPL.new_color(color_rgba(205, 0, 255, 255))
-BasicPL.new_color(color_rgba(220, 210, 220, 255))
-BasicPL.new_color(color_rgba(150, 140, 150, 255))
-BasicPL.new_color(color_rgba(0, 1, 0, 255))
-BasicPL.new_color(color_rgba(230, 20, 55, 255))
-BasicPL.new_color(color_rgba(10, 150, 40, 255))
-
-Color_picker = color_picker((10, 170), 1, 230, 130, BasicPL)
+Color_picker = color_picker((10, 170), 1, 230, 130, Pallete)
 
 Registry.Write("Char", "")
 
 
 
 #___SETTINGS___#
-Settings_ = settings((400, 150), Window.winX, 150, Window.winY, 60)
+Settings_ = template((400, 150), Window.winX, 150, Window.winY, 60)
+Settings_.toggle = False
+Settings_.new_component((0, 0), 150, 60)
+Registry.Write("Settings", Settings_)
 NameBt = textBt((10, 10), 0, 400, 30, textPos = (11, 10))
 def NameBtFn(NameBt: button):
     Settings.Set("Project", "Name", NameBt.stats["txt"])
@@ -90,53 +77,60 @@ NewLBt = button((10, 160), -1, 60, 30, "new", textPos = (15, 10), attachFn=NewLB
 DelLBt = button((80, 160), -2, 60, 30, "del", textPos = (15, 10), attachFn=DelLBtFn)
 
 Attelier = template((Window.winX - 300, 50), Window.winX, 250, Window.winY, 600)
-Attelier.link_multi(BasicPL, Color_picker, LyrM)
+Attelier.link_multi(Pallete, Color_picker, LyrM)
 Attelier.components[LyrM.order].link_component(NewLBt)
 Attelier.components[LyrM.order].link_component(DelLBt)
 
 Garage = template((50, 50), Window.winX, 300, Window.winY, 600)
 Garage_Colors = [[100, 100, 100], [60, 60, 60], [0, 0, 0]]
 BucketBt = toolBt((10, 10), 0, 50, 50, Bucket, color_override=Garage_Colors)
-BucketBt.loadIcon("Icons\Bucket.png")
+BucketBt.loadIcon("Bucket.png")
 PencilBt = toolBt((70, 10), 1, 50, 50, Pencil, color_override=Garage_Colors)
-PencilBt.loadIcon("Icons\Pencil.png")
+PencilBt.loadIcon("Pencil.png")
 VisBt = button((130, 10), 2, 50, 50, color_override=Garage_Colors, attachFn=VisBtFn)
-VisBt.loadIcon("Icons\VISION.png")
+VisBt.loadIcon("VISION.png")
 AvaBt = button((10, 130), 4, 50, 50, attachFn=AvalanadiaBtFn)
-AvaBt.loadIcon("Icons\Avalandia.png")
+AvaBt.loadIcon("Avalandia.png")
 ReflectBt = popupBt((10, 70), 3, 50, 50, color_override=Garage_Colors)
-ReflectBt.loadIcon("Icons\Reflect.png")
+ReflectBt.loadIcon("Reflect.png")
+LassoBt = toolBt((190, 10), 5, 50, 50, Lasso, color_override=Garage_Colors)
+LassoBt.loadIcon("Lasso.png")
 
 Garage.new_component((10, 10), 280, 300)
-Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, AvaBt, ReflectBt)
-x_o, y_o = pair_sum(ReflectBt.localPos, ReflectBt.master.localPos, ReflectBt.master.master.position)
-print(x_o, y_o)
-RefSelection = selection((x_o + 60, y_o - 35), Window.winX, Window.winY, [ReflectX, ReflectY], 30, 0)
-ReflectBt.SetValues(RefSelection, (100, 100, 200, 200))
-Slider = sliderBt((10, 10), 0, 16, 50)
-Archetype = slide_panel((10, 320), 1, 280, 270, 280, 600, Slider)
-Archetype.link_component(icon((100, 100), 1, 30, 30, "Icons/Python.png"))
-Garage.link_component(Archetype)
+Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, AvaBt, ReflectBt, LassoBt)
 
 Polish = template((450, 20), Window.winX, 700, Window.winY, 100)
-Polish.new_component((0, 0), 200, 100, [[150, 150, 150]])
+Polish.new_component((0, 0), 200, 100)
 Polish.components[0].link_component(SaveBt)
 Polish.components[0].link_component(ExitBt)
 Polish.components[0].link_component(LoadBt)
-OptionsSlide: component = Polish.new_component((500, 0), 200, 100, [[150, 150, 150]])
+OptionsSlide: component = Polish.new_component((500, 0), 200, 100)
 StngsBt = popupBt((150, 10), 0, 40, 40)
 StngsBt.SetValues(Settings_, (150, 60, 770, 400))
-StngsBt.loadIcon("Icons\Settings.png")
+StngsBt.loadIcon("Settings.png")
 OptionsSlide.link_component(StngsBt)
+PltBt = button((100, 10), 1, 40, 40)
+PltBt.loadIcon("Pallete.png")
+OptionsSlide.link_component(PltBt)
 
 Animator = template((40, 720), Window.winX, 1460, Window.winY, 300)
 RollBt = rollBt((10, 10), 0, 40, 40)
-RollBt.loadIcon("Icons\Go.png")
+RollBt.loadIcon("Go.png")
 FrameBt = button((10, 60), 1, 40, 40, attachFn=PlusFrmBtFn)
-FrameBt.loadIcon("Icons\Add.png")
-Control: component = Animator.new_component((0, 0), 60, 110)
-Control.link_component(RollBt)
-Control.link_component(FrameBt)
+FrameBt.loadIcon("Add.png")
+ConfirmBt = button((10, 110), 2, 40, 40)
+ConfirmBt.loadIcon("Confirm.png")
+Control: component = Animator.new_component((10, 10), 60, 160)
+Control.link_multi(RollBt, FrameBt, ConfirmBt)
+FrmSlider = sliderBt((10, 120), 0, 50, 20, True)
+FrmM = frame_mngr((80, 10), 1, 800, 160, 2000, 160, FrmSlider, True)
+Registry.Write("FrameManager", FrmM)
+Animator.link_component(FrmM)
+
+#___Selections___#
+RefSelection = selection(pair_sum(pair_sum(ReflectBt.localPos, ReflectBt.master.localPos, ReflectBt.master.master.position), (60, -15)),
+                          Window.winX, Window.winY, [ReflectX, ReflectY], ["Vertical.png", "Horizontal.png"], 30, 0)
+ReflectBt.SetValues(RefSelection, (7, 15, RefSelection.stats['w'], RefSelection.stats['h']))
 
 #___Order_tDict_Here___#
 SwitchIn_tDict(1, 4)
@@ -158,12 +152,12 @@ while True:
             build_canvas()
         if event.type == LOAD:
             Canvas.lDict[Mouse.layer_selected].grid = load()
+            Canvas.lDict[Mouse.layer_selected].reload_color_data()
             Canvas.lDict[Mouse.layer_selected].draw()
             LyrM.draw()
         if event.type == AUTOSAVE:
-            # Debug Tool || pygame.event.post(BUILD_EV)
             Settings.Set("Project", "Canvas", Canvas.get_raw())
-            Settings.save_specified_settings("Project")
+            Settings.save_specified_setting("Project")
         if event.type == NEWLAYER:
             Mouse.layer_selected = Canvas.new_layer()
             LyrM.update()
@@ -202,7 +196,7 @@ while True:
 
     Window.screen.blit(bckgrnd, (0, 0))
 
-    Canvas.lDict[Mouse.layer_selected].draw()
+    tDict[0].lDict[Mouse.layer_selected].draw() # Doesn't work with Canvas.
     for index in range(max(list(tDict.keys())) + 1):
         if not tDict[index].toggle:
             continue

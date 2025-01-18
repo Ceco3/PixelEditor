@@ -1,46 +1,31 @@
 from .Template import template, component, tDict, slide_panel
 from .Color import toRgba, color_rgba, color_rgb
-from .Canvas import Canvas
-from .Meta import Registry
+from .Canvas import Canvas, rescale_canvas, new_canvas
+from .Meta import Registry, Updater
 from .Mouse import Mouse
 from .ComF import cmax, validate_string
 from .Window import Window
-from .Button import lyrBt, button, textBt
-from .Prompt import prompt
+from .Button import lyrBt, button, knob, sliderBt, frmBt
 from . import Settings
+from .BootF import build_canvas
+from .Prompt import prompt
 
-import cv2, numpy
+from itertools import takewhile
+import cv2
 import pygame
 
-def build(gridObject: list[list[color_rgba]], path, name) -> None:
-    "Builds the image (as specified by Project settings)"
-    height = len(gridObject)
-    width = len(gridObject[0])
-
-    numpyGrid = []
-
-    for y in range(height):
-        row = []
-        for x in range(width):
-            row.append(numpy.array(gridObject[y][x].toBGRA().toTuple()))
-        numpyGrid.append(numpy.array(row))
-    
-    numpyGrid = numpy.array(numpyGrid)
-
-    cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
-
-def load():
+def load() -> list[list[color_rgba]]:
     
     ret_info, _ = prompt.load_prompt(None, (Window.winX / 2 - 250, Window.winY / 2 - 175), 500, 350)
+
     if ret_info is None:
         # Pop up Ideally
         return Canvas.lDict[Mouse.layer_selected].grid
-    path = ret_info[0]
+    path: str = ret_info[0]
 
     if ".png" not in path:
-        bgra_content = cv2.imread(path + ".png", -1)
-    else:
-        bgra_content = cv2.imread(path, -1)
+        path += ".png"
+    bgra_content = cv2.imread(path, -1)
 
     if bgra_content is None:
         # Pop up Ideally
@@ -54,30 +39,27 @@ def load():
     for y in range(height):
         row = []
         for x in range(width):
-            row.append(color_rgba(bgra_content[y][x][2], bgra_content[y][x][1], bgra_content[y][x][0], bgra_content[y][x][3]))
+            row.append(color_rgba(int(bgra_content[y][x][2]), int(bgra_content[y][x][1]), int(bgra_content[y][x][0]), int(bgra_content[y][x][3])))
         gridObject.append(row)
+    print(bgra_content[0][0])
+    print(gridObject[0][0])
+
+    rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, [width, height])
+    name = list(takewhile(lambda x: x != "\\" and x != "/", path[::-1]))
+    name.reverse()
+    name = ''.join(name)
+    name = name.replace(".png", '')
+    Settings.Set("Project", "Name", name)
 
     return gridObject
 
-def load_frame(frame_uid):
-    bgra_content = cv2.imread(Settings.Get("User", ["Paths", "FrameBuffer"]) + frame_uid)
-
-    if bgra_content is None:
-        # Pop up Ideally
-        return Canvas.lDict[Mouse.layer_selected].grid
+def load_pallete(name: str) -> 'pallete':
+    raw_pallete = Settings.Get("Palletes", name)
+    Pallete = pallete((0, 0), 0, 230, 150)
+    for color in raw_pallete:
+        Pallete.new_color(toRgba(color))
     
-    gridObject = []
-
-    height = len(bgra_content)
-    width = len(bgra_content[0])
-
-    for y in range(height):
-        row = []
-        for x in range(width):
-            row.append(color_rgba(bgra_content[y][x][2], bgra_content[y][x][1], bgra_content[y][x][0], bgra_content[y][x][3]))
-        gridObject.append(row)
-
-    return gridObject
+    return Pallete
 
 AUTOSAVE = pygame.USEREVENT + 6
 AUTOSAVE_EV = pygame.event.Event(AUTOSAVE)
@@ -91,7 +73,7 @@ class pallete(component):
     def __init__(self, localPos, order, width, height) -> None:
         super().__init__(localPos, order, width, height)
         self.iconSize = 30
-        self.primary = {}
+        self.primary: dict[int, color_rgba] = {}
 
     def draw(self):
         super().draw()
@@ -109,11 +91,10 @@ class pallete(component):
         new_color_order = cmax(keys) + 1
         self.primary[new_color_order] = color.toTuple()
 
-    def save_pallete(self):
-        pass
-
-    def load_pallete(self):
-        pass
+    def get_raw(self) -> list[tuple[int, int, int, int]]:
+        raw = []
+        for color in self.primary.values():
+            raw.append(color.toTuple())
 
     def onClick(self, localMousePos):
         columns = bound(len(list(self.primary.keys())) , (self.stats["w"] - 20) // self.iconSize)
@@ -131,33 +112,39 @@ class pallete(component):
 class color_picker(component):
     def __init__(self, localPos, order, width, height, bound_pallete: pallete, color_override=None):
         super().__init__(localPos, order, width, height, color_override)
+        Updater.Add(self)
         self.prewiev = [0, 0, 0, 255]
         self.bound_pallete = bound_pallete
-        r_butt = textBt((100, 10), 0, 30, 30, "0", (3, 10))
-        r_butt.attach(self.repaint_prewiev)
-        g_butt = textBt((100, 50), 1, 30, 30, "0", (3, 10))
-        g_butt.attach(self.repaint_prewiev)
-        b_butt = textBt((100, 90), 2, 30, 30, "0", (3, 10))
-        b_butt.attach(self.repaint_prewiev)
+        r_knob = knob((100, 10), 0, 100, 30)
+        g_knob = knob((100, 50), 1, 100, 30)
+        b_knob = knob((100, 90), 2, 100, 30)
 
         def pick_color(BtObject):
-            bound_pallete.new_color(toRgba(self.prewiev))
+            new_color = toRgba(self.prewiev)
+            bound_pallete.new_color(new_color)
+            Mouse.color = new_color
         pick_button = button((20, 45), 4, 40, 40, attachFn=pick_color)
 
-        self.link_multi(r_butt, g_butt, b_butt, pick_button)
+        self.link_multi(r_knob, g_knob, b_knob, pick_button)
+        self.repaint_prewiev()
     
+    def Update(self):
+        for knob in self.components.values():
+            if knob.isClicked:
+                self.repaint_prewiev()
+
     def draw(self):
         super().draw()
         self.bound_pallete.draw()
         pygame.draw.rect(self.surf, [100, 100, 100], pygame.Rect(15, 40, 50, 50))
         pygame.draw.rect(self.surf, self.prewiev, pygame.Rect(20, 45, 40, 40))
 
-    def repaint_prewiev(self, BtObject):
+    def repaint_prewiev(self):
         color = [0, 0, 0, 255]
-        for color_button in self.components.values():
-            if color_button.order == 4:
+        for color_knob in self.components.values():
+            if color_knob.order == 4:
                 continue
-            color[color_button.order] = int(color_button.stats["txt"])
+            color[color_knob.order] = int(color_knob.value * 255)
         self.prewiev = color
 
 class layer_mngr(component):
@@ -209,26 +196,35 @@ class layer_mngr(component):
 class frame_mngr(slide_panel):
     def __init__(self, localPos, order, width, height, big_width, big_height, sliderBt, horizontal=False, color_override=None):
         super().__init__(localPos, order, width, height, big_width, big_height, sliderBt, horizontal, color_override)
-        self.frame_buff = []
+        self.curr_frame = 0
+        self.pic_size = 90
+        self.last_id = 0
 
-    def add_frame(self, uid: str):
-        self.frame_buff.append(uid)
+    def add_frame(self):
+        # build_canvas(True, self.last_id + 1)
+        FrameBt = frmBt((15 + self.pic_size * self.last_id + 15 * self.last_id - self.cutoff, 10),
+                         self.last_id + 1, self.pic_size, self.pic_size, self.last_id + 1, Canvas)
+        new_canvas(Canvas.position, Canvas.stats['w'], Canvas.stats['h'], (Canvas.pix_w, Canvas.pix_h), Canvas.order)
+        self.link_component(FrameBt)
+        self.last_id += 1
 
     def play(self):
         pass
 
-class settings(template):
-    def __init__(self, position, master_w, width, master_h, height) -> None:
-        super().__init__(position, master_w, width, master_h, height)
-        self.toggle = False
-        self.new_component((0, 0), width, height)
-        Registry.Write("Settings", self)
+    def draw(self):
+        super().draw()
+        for FrmBt in self.components.values():
+            if not isinstance(FrmBt, frmBt):
+                continue
+            pygame.draw.rect(self.surf, self.master.stats['c'],
+                              pygame.Rect(25 + self.pic_size * (FrmBt.uid - 1) + 12 * (FrmBt.uid - 1) - self.cutoff, 5,
+                                           self.pic_size, self.pic_size))
 
 I_SHAPE = 0
 DASH_SHAPE = 1
 
 class selection(template):
-    def __init__(self, position, master_w, master_h, button_fns: list[button], button_dim: int,
+    def __init__(self, position, master_w, master_h, button_fns: list[button], button_icon_paths: list[str], button_dim: int,
                  shape = I_SHAPE, tDict_override=None, color_override=None):
         if shape == I_SHAPE:
             width = button_dim + (1/6) * button_dim * 2 + 10
@@ -240,16 +236,27 @@ class selection(template):
         self.shape = shape
         self.button_dim = button_dim
         self.toggle = False
+        self.selected_bt = 0
         self.new_component((0, 0), width, height)
-        self.populate(button_fns)
+        self.populate(button_fns, button_icon_paths)
     
-    def populate(self, button_fns: list[button]):
+    def populate(self, button_fns: list[button], button_icn_pths: list[str]):
         if self.shape == I_SHAPE:
             gap = (1/6) * self.button_dim
-            i = 0
-            for function in button_fns:
+            for i, function in enumerate(button_fns):
                 Button = button((5 + gap, 5 + gap + i * (self.button_dim + gap)), i, self.button_dim, self.button_dim,
                                 attachFn=function)
+                Button.loadIcon(button_icn_pths[i])
                 self.components[0].link_component(Button)
         if self.shape == DASH_SHAPE:
             pass
+
+class pallete_selector(template):
+    def __init__(self, position, master_w, width, master_h, height, tDict_override=None, color_override=None):
+        super().__init__(position, master_w, width, master_h, height, tDict_override, color_override)
+        self.pallete_num: int = len(Settings.Get("Palletes", None))
+        slider = sliderBt((10, 10), 0, 10, 50)
+        self.slide_panel = slide_panel((0, 0), 0, width, height, width, height, slider)
+
+    def display(self, master_surf: pygame.Surface):
+        pass

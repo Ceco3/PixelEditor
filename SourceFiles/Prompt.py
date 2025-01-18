@@ -3,14 +3,14 @@ from .Color import color_rgb, color_rgba
 from .Mouse import Mouse
 from .Button import button, text, icon, sliderBt
 from .Window import Window, Clock
-from .Meta import Registry
+from .Meta import Updater
 
 import pygame
 import sys, os
 
 # Forbidden Imports:
 #
-# Canvas
+# Canvas, Tapestry
 
 #Prompt Id's
 LOAD_ID = 0
@@ -41,6 +41,7 @@ class prompt(template):
             self.handle_events()
 
             self.display(Window.screen)
+            Updater.Update()
             pygame.display.update()
             Clock.tick(Window.framerate)
 
@@ -54,8 +55,12 @@ class prompt(template):
                     continue
                 Mouse.state["LWR"] = pygame.mouse.get_pressed()
                 self.onClick()
+            if event.type == pygame.MOUSEBUTTONUP:
+                Mouse.state["isDown"] = False
+                Mouse.state["LWR"] = (False, False, False)
+                self.onRelease()
 
-    def retrieve(self):
+    def retrieve(self) -> tuple[list, int]:
         return(self.info_buffer, self.identifier)
 
     def kill(self):
@@ -86,13 +91,22 @@ class prompt(template):
                 Prompt.kill()
                 Prompt.doRetrieve = True
 
+        def LoadPalleteFn(BtObject: button):
+            if Prompt.info_buffer != []:
+                Prompt.kill()
+                Prompt.doRetrieve = True
+                if len(Prompt.info_buffer) == 1:
+                    Prompt.info_buffer.append(True)
+                else:
+                    Prompt.info_buffer[1] = True
+
         def rootBtFn(BtObject: button):
             left, _, right = Mouse.state["LWR"]
             if right:
-                for bt_or_tx in self.slide_panel.components:
+                for bt_or_tx in Prompt.slide_panel.components:
                     del bt_or_tx
-                self.currLoadDir = "."
-                self.attached_functions[0](self) # Calls load_prompt_graphics (this method)
+                Prompt.currLoadDir = "."
+                Prompt.attached_functions[0](Prompt)
                 return True # The panel.component dict was changed from inside the onClick for-loop,
                             # So we have to signal it to break the cycle (Implement other soln?)
 
@@ -104,14 +118,19 @@ class prompt(template):
         LoadBt.attach(LoadFn)
         buttons_text_tuples.append((LoadBt, None))
 
-        directoryBt = button((10, 10), 2, 300, 30, "Gallery", (11, 10))
+        # Loads the picture along with its pallete scheme
+        LoadPalleteBt = button((width - 200, height - 40), 2, 90, 30, "pload", (11, 10))
+        LoadPalleteBt.attach(LoadPalleteFn)
+        buttons_text_tuples.append((LoadPalleteBt, None))
+
+        directoryBt = button((10, 10), 3, 300, 30, "Gallery", (11, 10))
         directoryBt.attach(rootBtFn)
         buttons_text_tuples.append((directoryBt, None))
                     
         attached_functions.append(prompt.load_prompt_graphics)
 
         Prompt = prompt(postition, Window.winX, width, Window.winY, height,
-                        buttons_text_tuples, attached_functions, prompt.load_constructor, LOAD_ID, color_override)
+                        buttons_text_tuples, attached_functions, prompt.load_constructor, LOAD_ID, color_override=color_override)
         Prompt.prompt_loop()
         if Prompt.doRetrieve:
             return Prompt.retrieve()
@@ -121,7 +140,7 @@ class prompt(template):
         self.doRetrieve = False
         self.currLoadDir: str = "."
         slider = sliderBt((10, 10), 0, 16, 50)
-        SlidePanel = slide_panel((0, 50), 3, self.stats['w'], self.stats['h'] - 100, self.stats['w'], (self.stats['h']), slider)
+        SlidePanel = slide_panel((0, 50), 4, self.stats['w'], self.stats['h'] - 100, self.stats['w'], (self.stats['h']), slider)
         self.slide_panel = SlidePanel
         self.panel.link_component(self.slide_panel)
         self.load_prompt_graphics()
@@ -137,9 +156,10 @@ class prompt(template):
                 self.info_buffer.append(self.currLoadDir + "\{}".format(BtObject.stats["txt"]))
             else:
                 self.info_buffer[0] = self.currLoadDir + "\{}".format(BtObject.stats["txt"])
+            BtObject.draw()
+            self.panel.draw()
 
         def dirBtFn(BtObject: button):
-            print("dirBtFn")
             left, _, right = Mouse.state["LWR"]
             if left:
                 for bt_or_tx in self.slide_panel.components:
@@ -189,29 +209,4 @@ class prompt(template):
         Bt_Tx_tuples.append((OkBt, ErrorTx))
 
         Prompt = prompt(position, Window.winX, width, Window.winY, height, Bt_Tx_tuples, attached_functions, None, ERROR_ID, color_override=color_override)
-        Prompt.prompt_loop()
-
-    #____________________Reflect_Prompt_______________________#
-    def reflect_prompt(self, position, width, height, reflect_fn, color_override = None):
-        Bt_Tx_tuples = []
-        attached_functions = []
-
-        def RefVrtclBtFn(BtObject: button):
-            reflect_fn(False)
-        
-        def RefHrzntlBtFn(BtObject: button):
-            reflect_fn(True)
-
-        RefVrtclBt = button((10, 10), 0, 30, 30)
-        RefVrtclBt.attach(RefVrtclBtFn)
-        RefVrtclBt.loadIcon("Icons/Reflect.png")
-
-        RefHrzntlBt = button((10, 50), 1, 30, 30)
-        RefHrzntlBt.attach(RefHrzntlBtFn)
-        RefHrzntlBt.loadIcon("Icons/Reflect.png")
-
-        Bt_Tx_tuples.append((RefVrtclBt, RefHrzntlBt))
-
-        Prompt = prompt(position, Window.winX, width, Window.winY, height,
-                        Bt_Tx_tuples, attached_functions, None, REFLECT_ID, color_override=color_override)
         Prompt.prompt_loop()

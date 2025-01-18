@@ -1,9 +1,11 @@
 from .Template import component, template, sub
 from .Text import make_word
 from .Mouse import Mouse
-from .ComF import cmax, Lerp
+from .ComF import cmax, Lerp, Clamp
 from .Meta import Updater, Registry
 from . import Settings
+from .BootF import load_frame
+from .Canvas import Canvas, canvas, switch_canvas
 
 # Forbidden Imports:
 # Prompt, Tapestry
@@ -51,6 +53,7 @@ class text(component):
 
 
 
+
 class button(component):
     def __init__(self, localPos, order, width, height, text = "", textPos = (0, 0), color_override = None, attachFn = None) -> None:
         colors = self.get_colors(color_override)
@@ -70,8 +73,14 @@ class button(component):
         if text is not None:
             self.text_surf = make_word(self.stats["txt"], self.stats["tc"])
 
-    def loadIcon(self, iconPath):
-        self.icon = pygame.transform.scale(pygame.image.load(iconPath).convert_alpha(), (self.stats["w"], self.stats["h"]))
+    def loadIcon(self, iconPath, dim: tuple[int, int] | None = None):
+        if dim is None:
+            dim = (self.stats['w'], self.stats['h'])
+        if '\\' in iconPath or '/' in iconPath:
+            self.icon = pygame.transform.scale(pygame.image.load(iconPath).convert_alpha(), dim)
+        else:
+            self.icon = pygame.transform.scale(pygame.image.load("Icons\\" + iconPath).convert_alpha(), dim)
+        # Maybe add a setting for default icon folder that may be changed (not too important)
 
     def draw(self):
         super().draw()
@@ -142,15 +151,40 @@ class lyrBt(button):
         self.stats["f"] = not self.stats["f"]
         Mouse.layer_selected = self.order
 
+class knob(button):
+    def __init__(self, localPos, order, width, height, text="", textPos=(0, 0), color_override=None, attachFn=None):
+        super().__init__(localPos, order, width, height, text, textPos, color_override, attachFn)
+        Updater.Add(self)
+        self.loadIcon("Knob.png", (30, 30))
+        self.range: tuple[int, int] = (0, 1)
+        self.value: float = 0.5
+
+    def Update(self):
+        if not self.isClicked:
+            return
+        
+        if self.master.master.__class__ == template:
+            transformed_mouse_pos = sub(sub(sub(Mouse.position, self.localPos), self.master.localPos), self.master.master.position)
+        
+        x, _ = transformed_mouse_pos
+        self.value = Clamp(0, 1, x / self.stats['w'])
+        self.draw()
+        self.master.draw()
+
+    def draw(self):
+        self.surf.fill(self.master.stats['c'])
+        pygame.draw.rect(self.surf, self.stats['fc'], pygame.Rect(10, self.stats['h'] / 2 + 3, self.stats['w'], 5))
+        self.surf.blit(self.icon, (self.stats['w'] * self.value - self.icon.width // 2, 5))
+
 class frmBt(button):
-    def __init__(self, localPos, order, width, height, uid, text="", textPos=(0, 0), color_override=None, attachFn=None):
+    def __init__(self, localPos, order, width, height, uid, bound_canvas, text="", textPos=(0, 0), color_override=None, attachFn=None):
         super().__init__(localPos, order, width, height, text, textPos, color_override, attachFn)
         self.uid = uid
-        self.loadIcon(Settings.Get("User", ["Paths", "FrameBuffer"]) + str(uid))
+        self.bound_canvas: canvas = bound_canvas
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
-
+        switch_canvas(self.bound_canvas)
 
 class rollBt(button):
     def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
@@ -210,7 +244,7 @@ class popupBt(button):
         Updater.Add(self)
 
     def SetValues(self, subject: template, values: tuple[int, int, int, int]):
-        self.subject = subject
+        self.subject: template = subject
 
         x_o, y_o, x_f, y_f = values
         self.internal = values
@@ -230,6 +264,10 @@ class popupBt(button):
 
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
+        left, _, right = Mouse.state["LWR"]
+        if left and Registry.Read("Settings") != self.subject:
+            self.subject.components[0].components[self.subject.selected_bt].onClick(localMousePos)
+            return
         match self.toggle:
             case False:
                 self.subject.toggle = True
@@ -276,6 +314,11 @@ class sliderBt(button):
         self.last_frame_pos = self.localPos[self.aux()]
         self.difference = 0
 
+    def draw(self):
+        x, y = self.localPos
+        super().draw()
+        pygame.draw.rect(self.master.surf, (255, 0, 0), pygame.Rect(x - 10, y - 10, 10, 10))
+
     def aux(self) -> int:
         if self.horizontal:
             return 0
@@ -283,7 +326,11 @@ class sliderBt(button):
 
     def onClick(self, localMousePos):
         x_o, y_o = self.localPos
-        transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
+        if self.master.master.__class__ == component:
+            transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.localPos)
+        if self.master.master.__class__ == template:
+            transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
+
         if self.horizontal:
             self.difference = transformed_mouse_pos[0] - x_o
         else:
@@ -299,7 +346,10 @@ class sliderBt(button):
 
     def Update(self):
         if self.isClicked:
-            transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
+            if self.master.master.__class__ == component:
+                transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.localPos)
+            if self.master.master.__class__ == template:
+                transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
             x_o, y_o = self.localPos
             if self.horizontal:
                 self.localPos = (transformed_mouse_pos[0] - self.difference, y_o)
@@ -309,6 +359,8 @@ class sliderBt(button):
             self.last_frame_pos = self.localPos[self.aux()]
             self.draw()
             self.master.draw()
+            if self.master.master.__class__ == component:
+                self.master.master.draw()
 
 class textBt(button):
     def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:

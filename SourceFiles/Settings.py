@@ -16,10 +16,16 @@ def load_all_settings(folder_path: str = settings_directory_path) -> dict[str, d
 
 settings_dict = load_all_settings()
 
-def save_specified_setting(setting_name: str) -> None:
-    # Writes json to file under <settings_directory_path> names <settings_name>
+def aux_save_specified_setting(setting_name: str, indent):
     with open(settings_directory_path + "\\" + setting_name + ".json", "w") as json_file:
-        json.dump(settings_dict[setting_name], json_file, indent=4)
+        json.dump(settings_dict[setting_name], json_file, indent=indent)
+
+def save_specified_setting(setting_name: str, single_line: bool = False) -> None:
+    # Writes json to file under <settings_directory_path> names <settings_name>
+    if not single_line:
+        aux_save_specified_setting(setting_name, 4)
+    else:
+        aux_save_specified_setting(setting_name, None)
 
 def load_specified_setting(setting_name: str) -> None:
     # Updates settings_dict[<setting_name>] with current json file
@@ -40,7 +46,9 @@ def aux_set(inner_dict: dict, arg_list: list[str], value):
     aux_set(inner_dict[arg_list.pop()], arg_list, value)
 
 #______Accesories______#
-def Get(setting_name, arg_list: list[str] | str): # -> Any
+def Get(setting_name, arg_list: list[str] | str | None): # -> Any
+    if arg_list is None:
+        return settings_dict[setting_name]
     if isinstance(arg_list, str):
         return settings_dict[setting_name][arg_list]
     arg_list.reverse()
