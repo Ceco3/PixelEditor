@@ -6,7 +6,7 @@ from . import Settings
 import numpy, cv2
 import os
 
-def build(gridObject: list[list[color_rgba]], path, name: str) -> None:
+def build(gridObject: list[list[color_rgba]], path, name: str) -> bool:
     "Builds the image (as specified by Project settings)"
     height = len(gridObject)
     width = len(gridObject[0])
@@ -24,17 +24,16 @@ def build(gridObject: list[list[color_rgba]], path, name: str) -> None:
     
     numpyGrid = numpy.array(numpyGrid)
 
-    cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
+    return cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
 
-def build_canvas(send_to_frame_buffer = False, frame_uid = None):
+def build_canvas(send_to_frame_buffer = False, frame_uid = None) -> bool:
     if not send_to_frame_buffer:
-        build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "SaveDir"]), Settings.Get("Project", "Name"))
-    if send_to_frame_buffer:
-        if frame_uid is None:
-            name = len(os.listdir(Settings.Get("User", ["Paths", "FrameBuffer"])))
-        if frame_uid is not None:
-            name = frame_uid
-        build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "FrameBuffer"]), name)
+        return build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "SaveDir"]), Settings.Get("Project", "Name"))
+    if frame_uid is None:
+        name = len(os.listdir(Settings.Get("User", ["Paths", "FrameBuffer"])))
+    if frame_uid is not None:
+        name = frame_uid
+    return build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "FrameBuffer"]), name)
     Settings.Set("Project", "Canvas", Canvas.get_raw())
 
 def load_frame(frame_uid: int) -> list[list[color_rgba]]:

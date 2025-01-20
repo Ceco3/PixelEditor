@@ -149,7 +149,8 @@ while True:
         if event.type == pygame.QUIT:
             ExitBtFn()
         if event.type == BUILD:
-            build_canvas()
+            if not build_canvas():
+                prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "could not save image")
         if event.type == LOAD:
             Canvas.lDict[Mouse.layer_selected].grid = load()
             Canvas.lDict[Mouse.layer_selected].reload_color_data()
