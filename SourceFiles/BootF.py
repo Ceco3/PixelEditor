@@ -10,6 +10,9 @@ def build(gridObject: list[list[color_rgba]], path, name: str) -> None:
     "Builds the image (as specified by Project settings)"
     height = len(gridObject)
     width = len(gridObject[0])
+    if path == '':
+        Settings.load_specified_setting("User")
+        path = Settings.Get("User", ["Paths", "SaveDir"])
 
     numpyGrid = []
 
