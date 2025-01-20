@@ -164,8 +164,7 @@ while True:
             LyrM.update()
         if event.type == DELLAYER:
             if len(Canvas.lDict) == 2:
-                prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, 
-                                    color_rgb(150, 150, 150), color_rgb(70, 70, 70), "cant delete layer")
+                prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "cant delete layer")
                 continue
             Canvas.del_layer(Mouse.layer_selected)
             LyrM.del_layer()
