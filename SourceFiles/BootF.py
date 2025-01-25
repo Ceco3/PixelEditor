@@ -42,8 +42,10 @@ def build_anim(name: str, path = None) -> bool:
     if not os.path.exists(path):
         os.makedirs(path)
 
+    success = True
     for Component in FrmM.components.values():
         if Component.order == 0: # Component is the slider button
             continue
         foremost_layer = max(Component.bound_canvas.lDict)
-        build(Component.bound_canvas.lDict[foremost_layer].grid, path, str(Component.uid))
+        success = success and build(Component.bound_canvas.lDict[foremost_layer].grid, path, str(Component.uid))
+    return success

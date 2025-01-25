@@ -17,7 +17,7 @@ from SourceFiles.ComF import validate_string, pair_sum
 from SourceFiles.Prompt import prompt
 from SourceFiles.Functions import BUILD, LOAD, NEWLAYER, DELLAYER, PLAYANIM, \
     SaveBtFn, ExitBtFn, SaveStngsBtFn, LoadBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
-    PlusFrmBtFn, SetSpeedMetaFn, PlayBtFn, ReflectX, ReflectY, AvalanadiaBtFn
+    PlusFrmBtFn, SaveAnimBtFn, SetSpeedMetaFn, PlayBtFn, ReflectX, ReflectY, AvalanadiaBtFn
 from SourceFiles.BootF import build_canvas
 
 Pallete = load_pallete("Testing")
@@ -27,7 +27,7 @@ Color_picker = color_picker((10, 170), 1, 230, 130, Pallete)
 
 Registry.Write("Char", "")
 
-
+Settings.Set("Project", "Name", "DefaultName")
 
 #___SETTINGS___#
 Settings_ = template((400, 150), Window.winX, 150, Window.winY, 60)
@@ -126,8 +126,9 @@ FrameBt.loadIcon("Add.png")
 PlayBt = popupBt((10, 110), 2, 40, 40)
 PlayBt.loadIcon("Play.png")
 PlayBt.attach(PlayBtFn)
-Control: component = Animator.new_component((10, 10), 60, 160)
-Control.link_multi(RollBt, FrameBt, PlayBt)
+AnimSaveBt = button((10, 160), 3, 40, 40, "save", (2, 15), attachFn=SaveAnimBtFn)
+Control: component = Animator.new_component((10, 10), 60, 210)
+Control.link_multi(RollBt, FrameBt, PlayBt, AnimSaveBt)
 FrmSlider = sliderBt((10, 120), 0, 50, 20, True)
 FrmM = frame_mngr((80, 10), 1, 800, 160, 2000, 160, FrmSlider, True)
 Registry.Write("FrameManager", FrmM)
