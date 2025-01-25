@@ -66,7 +66,7 @@ class component:
         for Component in self.components.values():
             if not Component.contains(localMousePos):
                 continue
-            if Component.onClick(sub( sub(localMousePos , self.localPos) , Component.localPos)): # Calls onClicks + checks if
+            if Component.onClick(sub(localMousePos , Component.localPos)): # Calls onClicks + checks if
                 break                            # the cycle should break (some buttons can alter <self.components>)
 
     def onRelease(self):
@@ -74,7 +74,8 @@ class component:
         for Component in self.components.values():
             if not Component.isClicked:
                 continue
-            Component.onRelease()
+            if Component.onRelease() == True: # Same thing as in onClick
+                break
 
     def draw(self):
         self.surf.fill(self.stats["c"])
@@ -111,7 +112,6 @@ class slide_panel(component):
         x_o, y_o = localPos
         if self.horizontal:
             return (x_o + self.cutoff, y_o)
-        print(x_o, y_o + self.cutoff)
         return (x_o, y_o + self.cutoff)
 
     def draw(self):

@@ -2,8 +2,7 @@
     "Paths": {
         "Home": "C:\\Users\\rasce\\OneDrive\\projects\\Python\\PixelEditor",
         "SaveDir": "Gallery",
-        "LoadDir": "Gallery",
-        "FrameBuffer": "FrameBuffer"
+        "LoadDir": "Gallery"
     },
     "Design": "Dark",
     "Designs": {

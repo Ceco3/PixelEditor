@@ -1,5 +1,5 @@
 from .Color import color_rgba, color_rgb
-from .Template import template, cmax
+from .Template import template, cmax, tDict
 from .Meta import Registry, Updater
 from .Window import Window
 from .Mouse import Mouse
@@ -194,6 +194,7 @@ def new_canvas(position: tuple[int, int], width, height, pix_dim: tuple[int, int
 def switch_canvas(new_canvas: canvas):
     global Canvas
     Canvas = new_canvas
+    tDict[0] = Canvas
 
 def aux_rescale_x(Layer: layer, new_pix_w: int, isGreater: bool) -> None:
     for row_idx in range(len(Layer.grid)):

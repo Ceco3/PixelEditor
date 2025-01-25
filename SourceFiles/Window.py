@@ -5,7 +5,7 @@ class window:
         self.winX = winX
         self.winY = winY
         self.framerate = framerate
-        self.screen = pygame.display.set_mode((winX, winY), pygame.DOUBLEBUF, 32)
+        self.screen = pygame.display.set_mode((winX, winY), pygame.DOUBLEBUF | pygame.RESIZABLE, 32)
         pygame.display.set_caption("Pixel Editor")
 
 Window = window()

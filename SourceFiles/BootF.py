@@ -1,7 +1,8 @@
 from .Color import color_rgba
 from .Mouse import Mouse
-from .Canvas import Canvas
+from . import Canvas
 from . import Settings
+from .Meta import Registry
 
 import numpy, cv2
 import os
@@ -26,32 +27,23 @@ def build(gridObject: list[list[color_rgba]], path, name: str) -> bool:
 
     return cv2.imwrite(path + "\{}".format(name) + ".png", numpyGrid)
 
-def build_canvas(send_to_frame_buffer = False, frame_uid = None) -> bool:
-    if not send_to_frame_buffer:
-        return build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "SaveDir"]), Settings.Get("Project", "Name"))
-    if frame_uid is None:
-        name = len(os.listdir(Settings.Get("User", ["Paths", "FrameBuffer"])))
-    if frame_uid is not None:
-        name = frame_uid
-    return build(Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "FrameBuffer"]), name)
-    Settings.Set("Project", "Canvas", Canvas.get_raw())
+def build_canvas() -> bool:
+    return build(Canvas.Canvas.lDict[Mouse.layer_selected].grid, Settings.Get("User", ["Paths", "SaveDir"]), Settings.Get("Project", "Name"))
+    Settings.Set("Project", "Canvas", Canvas.Canvas.get_raw())
 
-def load_frame(frame_uid: int) -> list[list[color_rgba]]:
-    bgra_content = cv2.imread(Settings.Get("User", ["Paths", "FrameBuffer"]) + "\\" + str(frame_uid) + ".png", -1)
+def build_anim(name: str, path = None) -> bool:
+    "Builds all the frames currently in your frame manager as a folder"
+    FrmM = Registry.Read("FrameManager")
 
-    if bgra_content is None:
-        # Pop up Ideally
-        return Canvas.lDict[Mouse.layer_selected].grid
-    
-    gridObject = []
+    if path is None:
+        Settings.load_specified_setting("User")
+        path = Settings.Get("User", ["Paths", "SaveDir"]) 
+    path += "\\" + name
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-    height = len(bgra_content)
-    width = len(bgra_content[0])
-
-    for y in range(height):
-        row = []
-        for x in range(width):
-            row.append(color_rgba(int(bgra_content[y][x][2]), int(bgra_content[y][x][1]), int(bgra_content[y][x][0]), int(bgra_content[y][x][3])))
-        gridObject.append(row)
-
-    return gridObject
+    for Component in FrmM.components.values():
+        if Component.order == 0: # Component is the slider button
+            continue
+        foremost_layer = max(Component.bound_canvas.lDict)
+        build(Component.bound_canvas.lDict[foremost_layer].grid, path, str(Component.uid))

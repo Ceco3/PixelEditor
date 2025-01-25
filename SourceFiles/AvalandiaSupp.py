@@ -1,4 +1,4 @@
-from .Canvas import Canvas
+from . import Canvas
 
 DEEP_WATER = 0
 WATER = 1
@@ -22,7 +22,7 @@ terrain_dict = {
 
 def save_avalandia_data():
     with open(data_file_path, "w") as data_file:
-        canvas_data = Canvas.lDict[1].get_raw()
+        canvas_data = Canvas.Canvas.lDict[1].get_raw()
         lines = []
         for row in canvas_data:
             line = ""

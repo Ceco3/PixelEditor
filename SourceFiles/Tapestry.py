@@ -1,35 +1,30 @@
 from .Template import template, component, tDict, slide_panel
 from .Color import toRgba, color_rgba, color_rgb
-from .Canvas import Canvas, rescale_canvas, new_canvas
+from . import Canvas
+from .Canvas import rescale_canvas, new_canvas, switch_canvas
 from .Meta import Registry, Updater
 from .Mouse import Mouse
 from .ComF import cmax, validate_string
 from .Window import Window
 from .Button import lyrBt, button, knob, sliderBt, frmBt
 from . import Settings
-from .BootF import build_canvas
 from .Prompt import prompt
 
 from itertools import takewhile
 import cv2
 import pygame
 
-def load() -> list[list[color_rgba]]:
-    
-    ret_info, _ = prompt.load_prompt(None, (Window.winX / 2 - 250, Window.winY / 2 - 175), 500, 350)
+AUTOSAVE = pygame.USEREVENT + 6
+AUTOSAVE_EV = pygame.event.Event(AUTOSAVE)
 
-    if ret_info is None:
-        # Pop up Ideally
-        return Canvas.lDict[Mouse.layer_selected].grid
-    path: str = ret_info[0]
-
+def load_img(path) -> list[list[color_rgba]]:
     if ".png" not in path:
         path += ".png"
     bgra_content = cv2.imread(path, -1)
 
     if bgra_content is None:
         # Pop up Ideally
-        return Canvas.lDict[Mouse.layer_selected].grid
+        return Canvas.Canvas.lDict[Mouse.layer_selected].grid
 
     gridObject = []
 
@@ -41,8 +36,6 @@ def load() -> list[list[color_rgba]]:
         for x in range(width):
             row.append(color_rgba(int(bgra_content[y][x][2]), int(bgra_content[y][x][1]), int(bgra_content[y][x][0]), int(bgra_content[y][x][3])))
         gridObject.append(row)
-    print(bgra_content[0][0])
-    print(gridObject[0][0])
 
     rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, [width, height])
     name = list(takewhile(lambda x: x != "\\" and x != "/", path[::-1]))
@@ -53,6 +46,22 @@ def load() -> list[list[color_rgba]]:
 
     return gridObject
 
+def load_anim():
+    pass
+
+def load():
+    ret_info, _ = prompt.load_prompt(None, (Window.winX / 2 - 250, Window.winY / 2 - 175), 500, 350)
+
+    if ret_info is None:
+        # Pop up Ideally
+        return Canvas.Canvas.lDict[Mouse.layer_selected].grid
+    path: str = ret_info[0]
+
+    Canvas.Canvas.lDict[Mouse.layer_selected].grid = load_img(path)
+    Canvas.Canvas.lDict[Mouse.layer_selected].reload_color_data()
+    Canvas.Canvas.lDict[Mouse.layer_selected].draw()
+
+
 def load_pallete(name: str) -> 'pallete':
     raw_pallete = Settings.Get("Palletes", name)
     Pallete = pallete((0, 0), 0, 230, 150)
@@ -60,9 +69,6 @@ def load_pallete(name: str) -> 'pallete':
         Pallete.new_color(toRgba(color))
     
     return Pallete
-
-AUTOSAVE = pygame.USEREVENT + 6
-AUTOSAVE_EV = pygame.event.Event(AUTOSAVE)
 
 def bound(x, y):
     if x < y:
@@ -155,11 +161,11 @@ class layer_mngr(component):
         self.build()
 
     def build(self):
-        for lyr_key in Canvas.lDict:
+        for lyr_key in Canvas.Canvas.lDict:
             self.new_layer()
 
     def update(self):
-        for lyr_key in Canvas.lDict:
+        for lyr_key in Canvas.Canvas.lDict:
             if lyr_key not in self.components:
                 self.new_layer()
             if Mouse.layer_selected == lyr_key:
@@ -190,7 +196,7 @@ class layer_mngr(component):
                 component.draw()
                 self.surf.blit(component.surf, component.localPos)
             if component.order > 0:
-                component.draw(Canvas.lDict[component.order].color_data)
+                component.draw(Canvas.Canvas.lDict[component.order].color_data)
                 self.surf.blit(component.surf, component.localPos)
 
 class frame_mngr(slide_panel):
@@ -199,26 +205,55 @@ class frame_mngr(slide_panel):
         self.curr_frame = 0
         self.pic_size = 90
         self.last_id = 0
+        self.play_speed: float = 15 # FPS
+
+    def remove_frame(self, uid: int):
+        self.components[uid] = None
+        last_key = 0
+        for key in self.components:
+            if key > uid:
+                self.components[key - 1] = self.components[key]
+                self.components[key - 1].uid -= 1
+                self.components[key - 1].order -= 1
+                x_o, y_o = self.components[key].localPos
+                self.components[key - 1].localPos = (x_o - self.pic_size - 15, y_o)
+                self.components[key - 1].og_pos = (x_o - self.pic_size - 15, y_o)
+            if self.components.get(key + 1) is None:
+                last_key = key
+        del self.components[last_key]
+        self.last_id -= 1
+        self.draw()
 
     def add_frame(self):
         # build_canvas(True, self.last_id + 1)
         FrameBt = frmBt((15 + self.pic_size * self.last_id + 15 * self.last_id - self.cutoff, 10),
-                         self.last_id + 1, self.pic_size, self.pic_size, self.last_id + 1, Canvas)
-        new_canvas(Canvas.position, Canvas.stats['w'], Canvas.stats['h'], (Canvas.pix_w, Canvas.pix_h), Canvas.order)
+                         self.last_id + 1, self.pic_size, self.pic_size, self.last_id + 1, Canvas.Canvas)
+        new_canvas(Canvas.Canvas.position, Canvas.Canvas.stats['w'], Canvas.Canvas.stats['h'],
+                    (Canvas.Canvas.pix_w, Canvas.Canvas.pix_h), Canvas.Canvas.order)
         self.link_component(FrameBt)
         self.last_id += 1
 
     def play(self):
-        pass
+        self.curr_frame = (self.curr_frame + 1) % (len(self.components))
+        if self.curr_frame == 0:
+            self.curr_frame += 1
+        switch_canvas(self.components[self.curr_frame].bound_canvas)
 
     def draw(self):
-        super().draw()
+        self.surf.fill(self.stats['c'])
         for FrmBt in self.components.values():
             if not isinstance(FrmBt, frmBt):
                 continue
             pygame.draw.rect(self.surf, self.master.stats['c'],
-                              pygame.Rect(25 + self.pic_size * (FrmBt.uid - 1) + 12 * (FrmBt.uid - 1) - self.cutoff, 5,
-                                           self.pic_size, self.pic_size))
+                              pygame.Rect(25 * (1 + self.cutoff / 800) + self.pic_size * (FrmBt.uid - 1) + 12 * (FrmBt.uid - 1) - self.cutoff, 5,
+                                            self.pic_size, self.pic_size))
+        # pygame.draw.rect(self.surf, [170, 50, 50], pygame.Rect())
+        for Component in self.components.values(): # Todo: implement culling
+                Component.draw()
+                if Component.order == 0:
+                    self.surf.blit(Component.surf, Component.localPos)
+                    continue
+                self.surf.blit(Component.surf, self.adjust(Component.localPos))
 
 I_SHAPE = 0
 DASH_SHAPE = 1

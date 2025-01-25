@@ -1,13 +1,11 @@
-from .Button import button, frmBt
-from .Prompt import prompt
+from .Button import button, toggleBt
 from .Mouse import Mouse
-from .Canvas import Reflect, Canvas
-from .ComF import pair_sum
-from .Tapestry import build_canvas
+from . import Canvas
+from .Canvas import Reflect
 from . import Settings
 from .AvalandiaSupp import save_avalandia_data
 from .Meta import Registry
-from .BootF import load_frame
+from .BootF import build_anim
 
 import sys, os
 import pygame
@@ -15,14 +13,6 @@ import pygame
 # An Intermediate file that can utilize many modules
 #
 # Don't import outside of main
-
-#_________________General_Functions__________________#
-def clear_frames():
-    files = os.listdir(Settings.Get("User", ["Paths", "FrameBuffer"]))
-    for file in files:
-        file_path = os.path.join(Settings.Get("User", ["Paths", "FrameBuffer"]), file)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
 
 BUILD = pygame.USEREVENT + 2
 BUILD_EV = pygame.event.Event(BUILD)
@@ -36,6 +26,8 @@ NEWLAYER_EV = pygame.event.Event(NEWLAYER)
 DELLAYER = pygame.USEREVENT + 5
 DELLAYER_EV = pygame.event.Event(DELLAYER)
 
+PLAYANIM = pygame.USEREVENT + 7
+PLAYANIM_EV = pygame.event.Event(PLAYANIM)
 
 #________________Button_Functions____________________#
 def VisBtFn(BtObject: button):
@@ -54,7 +46,6 @@ def LoadBtFn(BtObject: button):
     pygame.event.post(LOAD_EV)
 
 def ExitBtFn(BtObject: button):
-    clear_frames()
     pygame.quit()
     sys.exit()
 
@@ -62,13 +53,31 @@ def SaveStngsBtFn(BtObject: button):
     Settings.save_specified_setting("Project")
 
 def PlusFrmBtFn(BtObject: button):
-    Settings.Set("Project", "Canvas", Canvas.get_raw())
+    Settings.Set("Project", "Canvas", Canvas.Canvas.get_raw())
     Settings.save_specified_setting("Project")
     Registry.Read("FrameManager").add_frame()
 
-def FrameBtFn(BtObject: button):
-    build_canvas(True, Mouse.frame_uid)
-    load_frame(BtObject.uid)
+def PlayBtFn(BtObject: toggleBt):
+    BtObject.toggle = not BtObject.toggle
+    play_speed = Registry.Read("FrameManager").play_speed
+    # print(BtObject.toggle * int((1 / play_speed) * 1000))
+    pygame.time.set_timer(PLAYANIM_EV, BtObject.toggle * int((1 / play_speed) * 1000))
+    if BtObject.toggle:
+        BtObject.loadIcon("Stop.png")
+    else:
+        BtObject.loadIcon("Play.png")
+
+def SetSpeedMetaFn(value: int):
+    "Returns a function"
+    FrmM = Registry.Read("FrameManager")
+    
+    def SetSpeedFn(BtObject: button):
+        FrmM.play_speed = value
+    
+    return SetSpeedFn
+
+def SaveAnimBtFn(BtObject: button):
+    build_anim(Settings.Get("Project", "Name"), Settings.Get("User", ["Paths", "SaveDir"]))
 
 def ReflectX(BtObject: button):
     BtObject.master.master.selected_bt = BtObject.order

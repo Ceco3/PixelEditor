@@ -4,8 +4,7 @@ from .Mouse import Mouse
 from .ComF import cmax, Lerp, Clamp
 from .Meta import Updater, Registry
 from . import Settings
-from .BootF import load_frame
-from .Canvas import Canvas, canvas, switch_canvas
+from .Canvas import canvas, switch_canvas
 
 # Forbidden Imports:
 # Prompt, Tapestry
@@ -55,7 +54,7 @@ class text(component):
 
 
 class button(component):
-    def __init__(self, localPos, order, width, height, text = "", textPos = (0, 0), color_override = None, attachFn = None) -> None:
+    def __init__(self, localPos: tuple[int, int], order, width, height, text = "", textPos = (0, 0), color_override = None, attachFn = None) -> None:
         colors = self.get_colors(color_override)
         super().__init__(localPos, order, width, height, colors)
         self.stats["f"] = True
@@ -178,13 +177,58 @@ class knob(button):
 
 class frmBt(button):
     def __init__(self, localPos, order, width, height, uid, bound_canvas, text="", textPos=(0, 0), color_override=None, attachFn=None):
+        Updater.Add(self)
         super().__init__(localPos, order, width, height, text, textPos, color_override, attachFn)
         self.uid = uid
         self.bound_canvas: canvas = bound_canvas
+        self.y_diff: int = 0
+        self.og_pos = self.localPos
 
+    def update_alpha(self):
+        _, og_y = self.og_pos
+        _, c_y = self.localPos
+        new_alpha = (1 - 0.01 * (c_y - og_y)) * 255
+        self.surf.set_alpha(Clamp(40, 255, new_alpha))
+
+    def Update(self):
+        if not self.isClicked:
+            return
+
+        x_o, y_o = self.localPos
+        transformed_mouse_pos = sub(sub(Mouse.position, self.master.localPos), self.master.master.position)
+        m_x, m_y = transformed_mouse_pos
+
+        _, og_y = self.og_pos
+        y_f = Clamp(og_y, og_y + 100, m_y - self.y_diff)
+        self.localPos = x_o, y_f
+        self.update_alpha()
+        self.draw()
+        self.master.draw()
+    
     def onClick(self, localMousePos):
         super().onClick(localMousePos)
+        _, y_o = self.localPos
+        _, m_y = localMousePos
+        self.y_diff = m_y - y_o
+
+    def onRelease(self):
+        super().onRelease()
+        _, c_y = self.localPos
+        _, og_y = self.og_pos
+        if c_y - 65 > og_y:
+            self.master.remove_frame(self.uid)
+            self.draw()
+            self.master.draw()
+            return True
+        self.localPos = self.og_pos
         switch_canvas(self.bound_canvas)
+        self.update_alpha()
+        self.draw()
+        self.master.draw()
+    
+    def draw(self):
+        super().draw()
+        self.surf.blit(pygame.transform.scale(self.bound_canvas.surf, (self.stats['w'], self.stats['h'])), (0, 0))
 
 class rollBt(button):
     def __init__(self, localPos, order, width, height, text = "", textPos=(0, 0), color_override = None) -> None:
@@ -263,20 +307,25 @@ class popupBt(button):
             self.component_buffer[i] = x_f, y_f, x_o, y_o
 
     def onClick(self, localMousePos):
-        super().onClick(localMousePos)
+        self.isClicked = True
+        self.stats["f"] = not self.stats["f"]
         left, _, right = Mouse.state["LWR"]
-        if left and Registry.Read("Settings") != self.subject:
+        if left and Registry.Read("Settings") != self.subject and self.attached is None:
             self.subject.components[0].components[self.subject.selected_bt].onClick(localMousePos)
             return
-        match self.toggle:
-            case False:
-                self.subject.toggle = True
-            case True:
-                pass
+        if left and self.attached is not None:
+            self.attached(self)
+            self.draw()
+            self.master.draw()
+            return
+        if not self.toggle or self.attached is not None:
+            self.subject.toggle = True
         self.switch_start_end()
         self.toggle = not self.toggle
         self.isLerping = True
         self.complete = 0
+        self.draw()
+        self.master.draw()
 
     def update_surf(self, component_like: component):
         component_like.renew_surf()
@@ -317,7 +366,6 @@ class sliderBt(button):
     def draw(self):
         x, y = self.localPos
         super().draw()
-        pygame.draw.rect(self.master.surf, (255, 0, 0), pygame.Rect(x - 10, y - 10, 10, 10))
 
     def aux(self) -> int:
         if self.horizontal:
@@ -402,3 +450,9 @@ class textBt(button):
                 self.text_surf = make_word(self.stats["txt"], self.stats["tc"]) # Performance crusher
                 self.draw()
                 self.master.draw()
+
+class toggleBt(button):
+    def __init__(self, localPos, order, width, height, text="", textPos=(0, 0), color_override=None, attachFn=None):
+        super().__init__(localPos, order, width, height, text, textPos, color_override, attachFn)
+        self.toggle = False
+        

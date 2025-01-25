@@ -1,7 +1,10 @@
 import pygame
 import sys
 
-from SourceFiles.Canvas import Canvas, Pencil, Bucket, Lasso, rescale_canvas
+pygame.init()
+
+from SourceFiles import Canvas
+from SourceFiles.Canvas import Pencil, Bucket, Lasso, rescale_canvas
 from SourceFiles.Color import color_rgba, color_rgb
 from SourceFiles.Tapestry import color_picker, layer_mngr, frame_mngr, AUTOSAVE, AUTOSAVE_EV, selection, load_pallete, load
 from SourceFiles.Template import template, component, slide_panel, tDict, SwitchIn_tDict
@@ -9,12 +12,14 @@ from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
 from SourceFiles.Window import Window, Clock
 from SourceFiles import Settings
-from SourceFiles.Button import toolBt, rollBt, button, textBt, text, popupBt, sliderBt, icon
+from SourceFiles.Button import toolBt, rollBt, button, toggleBt, textBt, text, popupBt, sliderBt, icon
 from SourceFiles.ComF import validate_string, pair_sum
 from SourceFiles.Prompt import prompt
-from SourceFiles.Functions import BUILD, LOAD, NEWLAYER, DELLAYER, SaveBtFn, ExitBtFn, SaveStngsBtFn, LoadBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
-    PlusFrmBtFn, ReflectX, ReflectY, build_canvas, AvalanadiaBtFn
-                               
+from SourceFiles.Functions import BUILD, LOAD, NEWLAYER, DELLAYER, PLAYANIM, \
+    SaveBtFn, ExitBtFn, SaveStngsBtFn, LoadBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
+    PlusFrmBtFn, SetSpeedMetaFn, PlayBtFn, ReflectX, ReflectY, AvalanadiaBtFn
+from SourceFiles.BootF import build_canvas
+
 Pallete = load_pallete("Testing")
 Pallete.localPos = (10, 10)
 
@@ -118,19 +123,26 @@ RollBt = rollBt((10, 10), 0, 40, 40)
 RollBt.loadIcon("Go.png")
 FrameBt = button((10, 60), 1, 40, 40, attachFn=PlusFrmBtFn)
 FrameBt.loadIcon("Add.png")
-ConfirmBt = button((10, 110), 2, 40, 40)
-ConfirmBt.loadIcon("Confirm.png")
+PlayBt = popupBt((10, 110), 2, 40, 40)
+PlayBt.loadIcon("Play.png")
+PlayBt.attach(PlayBtFn)
 Control: component = Animator.new_component((10, 10), 60, 160)
-Control.link_multi(RollBt, FrameBt, ConfirmBt)
+Control.link_multi(RollBt, FrameBt, PlayBt)
 FrmSlider = sliderBt((10, 120), 0, 50, 20, True)
 FrmM = frame_mngr((80, 10), 1, 800, 160, 2000, 160, FrmSlider, True)
 Registry.Write("FrameManager", FrmM)
 Animator.link_component(FrmM)
 
 #___Selections___#
-RefSelection = selection(pair_sum(pair_sum(ReflectBt.localPos, ReflectBt.master.localPos, ReflectBt.master.master.position), (60, -15)),
+RefSelection = selection(pair_sum(ReflectBt.localPos, ReflectBt.master.localPos, ReflectBt.master.master.position, (60, -15)),
                           Window.winX, Window.winY, [ReflectX, ReflectY], ["Vertical.png", "Horizontal.png"], 30, 0)
 ReflectBt.SetValues(RefSelection, (7, 15, RefSelection.stats['w'], RefSelection.stats['h']))
+AnimSpeedSlctn = selection(pair_sum(PlayBt.localPos, PlayBt.master.localPos, PlayBt.master.master.position, (60, -355)),
+                           Window.winX, Window.winY, [SetSpeedMetaFn(15), SetSpeedMetaFn(20), SetSpeedMetaFn(30), SetSpeedMetaFn(60),
+                            SetSpeedMetaFn(120), SetSpeedMetaFn(10), SetSpeedMetaFn(5), SetSpeedMetaFn(2)],
+                            ["Play1.png", "Play2.png", "Play3.png", "Play5.png", "Play10.png", "Plays2.png", "Plays3.png", "Plays5.png"],
+                            30, 0)
+PlayBt.SetValues(AnimSpeedSlctn, (7, 15, AnimSpeedSlctn.stats['w'], AnimSpeedSlctn.stats['h']))
 
 #___Order_tDict_Here___#
 SwitchIn_tDict(1, 4)
@@ -152,23 +164,23 @@ while True:
             if not build_canvas():
                 prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "could not save image")
         if event.type == LOAD:
-            Canvas.lDict[Mouse.layer_selected].grid = load()
-            Canvas.lDict[Mouse.layer_selected].reload_color_data()
-            Canvas.lDict[Mouse.layer_selected].draw()
+            load()
             LyrM.draw()
         if event.type == AUTOSAVE:
-            Settings.Set("Project", "Canvas", Canvas.get_raw())
+            Settings.Set("Project", "Canvas", Canvas.Canvas.get_raw())
             Settings.save_specified_setting("Project")
         if event.type == NEWLAYER:
-            Mouse.layer_selected = Canvas.new_layer()
+            Mouse.layer_selected = Canvas.Canvas.new_layer()
             LyrM.update()
         if event.type == DELLAYER:
-            if len(Canvas.lDict) == 2:
+            if len(Canvas.Canvas.lDict) == 2:
                 prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "cant delete layer")
                 continue
-            Canvas.del_layer(Mouse.layer_selected)
+            Canvas.Canvas.del_layer(Mouse.layer_selected)
             LyrM.del_layer()
             LyrM.update()
+        if event.type == PLAYANIM:
+            FrmM.play()
         if event.type == pygame.MOUSEBUTTONDOWN:
             Mouse.state["isDown"] = True
             Mouse.state["LWR"] = pygame.mouse.get_pressed()
@@ -190,13 +202,13 @@ while True:
     Window.screen.fill((150, 150, 150))
 
     if Mouse.state["visualM"]:
-        Canvas.draw_with_tool(LyrM, tDict, Window.screen)
+        Canvas.Canvas.draw_with_tool(LyrM, tDict, Window.screen)
     if not Mouse.state["visualM"]:
-        Canvas.draw_with_tool(LyrM)
+        Canvas.Canvas.draw_with_tool(LyrM)
 
     Window.screen.blit(bckgrnd, (0, 0))
 
-    tDict[0].lDict[Mouse.layer_selected].draw() # Doesn't work with Canvas.
+    Canvas.Canvas.lDict[Mouse.layer_selected].draw()
     for index in range(max(list(tDict.keys())) + 1):
         if not tDict[index].toggle:
             continue
