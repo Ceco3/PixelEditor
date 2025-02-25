@@ -27,7 +27,10 @@ class color_rgba(color_rgb):
         super().__init__(r, g, b)
         self.a = a
 
-    def toTuple(self):
+    def copy(self) -> 'color_rgba':
+        return color_rgba(self.r, self.g, self.b, self.a)
+
+    def toTuple(self) -> tuple[int, int, int, int]:
         return (self.r, self.g, self.b, self.a)
     
     def toBGRA(self) -> 'color_rgba':

@@ -1,18 +1,21 @@
 from .Template import template, component, tDict, slide_panel
 from .Color import toRgba, color_rgba, color_rgb
 from . import Canvas
-from .Canvas import rescale_canvas, new_canvas, switch_canvas
+from .Canvas import rescale_canvas, new_canvas, switch_canvas, Bucket, Pencil, Lasso
 from .Meta import Registry, Updater
 from .Mouse import Mouse
-from .ComF import cmax, validate_string
+from .ComF import cmax, validate_string, pair_sum, pair_div_vec, pair_mul
 from .Window import Window
-from .Button import lyrBt, button, knob, sliderBt, frmBt
+from .Button import lyrBt, button, knob, sliderBt, frmBt, textBt, toolBt, selectBt, popupBt
 from . import Settings
+from . import Constants
+from .AvalandiaSupp import save_avalandia_data
 from .Prompt import prompt
+from .Constants import SELECTION
 
 from itertools import takewhile
 import cv2
-import pygame
+import pygame, sys
 
 AUTOSAVE = pygame.USEREVENT + 6
 AUTOSAVE_EV = pygame.event.Event(AUTOSAVE)
@@ -62,9 +65,9 @@ def load():
     Canvas.Canvas.lDict[Mouse.layer_selected].draw()
 
 
-def load_pallete(name: str) -> 'pallete':
+def load_pallete(name: str, localPos: tuple[int, int], order: int, width, height) -> 'pallete':
     raw_pallete = Settings.Get("Palletes", name)
-    Pallete = pallete((0, 0), 0, 230, 150)
+    Pallete: pallete = pallete((0, 0), 0, 230, 150)
     for color in raw_pallete:
         Pallete.new_color(toRgba(color))
     
@@ -116,18 +119,18 @@ class pallete(component):
             pass
 
 class color_picker(component):
-    def __init__(self, localPos, order, width, height, bound_pallete: pallete, color_override=None):
+    def __init__(self, localPos, order, width, height, bound_pallete_path: list[str], color_override=None):
         super().__init__(localPos, order, width, height, color_override)
         Updater.Add(self)
         self.prewiev = [0, 0, 0, 255]
-        self.bound_pallete = bound_pallete
+        self.bound_pallete: pallete = Settings.Get("Layout", bound_pallete_path)
         r_knob = knob((100, 10), 0, 100, 30)
         g_knob = knob((100, 50), 1, 100, 30)
         b_knob = knob((100, 90), 2, 100, 30)
 
         def pick_color(BtObject):
             new_color = toRgba(self.prewiev)
-            bound_pallete.new_color(new_color)
+            self.bound_pallete.new_color(new_color)
             Mouse.color = new_color
         pick_button = button((20, 45), 4, 40, 40, attachFn=pick_color)
 
@@ -153,12 +156,28 @@ class color_picker(component):
             color[color_knob.order] = int(color_knob.value * 255)
         self.prewiev = color
 
+def NewLBtFn(BtObject: button):
+    Mouse.layer_selected = Canvas.Canvas.new_layer()
+    BtObject.master.update()
+
+def DelLBtFn(BtObject: button):
+    if len(Canvas.Canvas.lDict) == 2:
+        prompt.error_prompt(None, (-150 + Window.winX // 2, -75 + Window.winY // 2), 300, 150, "cant delete layer")
+        return
+    Canvas.Canvas.del_layer(Mouse.layer_selected)
+    BtObject.master.del_layer()
+    BtObject.master.update()
+
 class layer_mngr(component):
     def __init__(self, localPos, order, width, height) -> None:
         super().__init__(localPos, order, width, height)
         self.stats["lyrBh"] = 25
         self.stats["lyrBw"] = 215
         self.build()
+
+        NewLBt = button((10, 160), -1, 60, 30, "new", textPos = (15, 10), attachFn=NewLBtFn)
+        DelLBt = button((80, 160), -2, 60, 30, "del", textPos = (15, 10), attachFn=DelLBtFn)      
+        self.link_multi(NewLBt, DelLBt)
 
     def build(self):
         for lyr_key in Canvas.Canvas.lDict:
@@ -255,11 +274,49 @@ class frame_mngr(slide_panel):
                     continue
                 self.surf.blit(Component.surf, self.adjust(Component.localPos))
 
+def AvalanadiaBtFn(BtObject: button):
+    save_avalandia_data()
+
+class tool_panel(component):
+    def __init__(self, localPos, order, width, height, color_override=None, type_id=Constants.TOOLS):
+        super().__init__(localPos, order, width, height, color_override, type_id)
+        Garage_Colors = [[100, 100, 100], [60, 60, 60], [0, 0, 0]]
+
+        BucketBt = toolBt((10, 10), 0, 50, 50, Bucket, color_override=Garage_Colors)
+        BucketBt.loadIcon("Bucket.png")
+        PencilBt = toolBt((70, 10), 1, 50, 50, Pencil, color_override=Garage_Colors)
+        PencilBt.loadIcon("Brush.png")
+        VisBt = selectBt((130, 10), 2, 50, 50, color_override=Garage_Colors)
+        VisBt.loadIcon("VISION.png")
+        AvaBt = button((10, 130), 4, 50, 50, attachFn=AvalanadiaBtFn)
+        AvaBt.loadIcon("Avalandia.png")
+        ReflectBt = selectBt((10, 70), 3, 50, 50, color_override=Garage_Colors)
+        ReflectBt.loadIcon("Reflect.png")
+        LassoBt = toolBt((190, 10), 5, 50, 50, Lasso, color_override=Garage_Colors)
+        LassoBt.loadIcon("Lasso.png")
+
+        self.link_multi(BucketBt, PencilBt, VisBt, AvaBt, ReflectBt, LassoBt)
+
+def ExitBtFn(BtObject: button):
+    for Template in tDict.values():
+        if Template.stats["te"]: # TerminateOnExit
+            Settings.Del("Layout", Template.stats["lyun"])
+    pygame.quit()
+    sys.exit()
+
+def LoadBtFn(BtObject: button):
+    pygame.event.post(Constants.LOAD_EV)
+
+class options_panel(component):
+    def __init__(self, localPos, order, width, height, color_override=None, type_id=Constants.GENERIC):
+        super().__init__(localPos, order, width, height, color_override, type_id)
+
 I_SHAPE = 0
 DASH_SHAPE = 1
 
 class selection(template):
-    def __init__(self, position, master_w, master_h, button_fns: list[button], button_icon_paths: list[str], button_dim: int,
+    # selection position is set on <selectionBt.Bind()>
+    def __init__(self, layout_uname: str | None, button_fns: list[button], button_icon_paths: list[str], button_dim: int,
                  shape = I_SHAPE, tDict_override=None, color_override=None):
         if shape == I_SHAPE:
             width = button_dim + (1/6) * button_dim * 2 + 10
@@ -267,7 +324,7 @@ class selection(template):
         if shape == DASH_SHAPE:
             height = button_dim + (1/6) * button_dim * 2 + 10
             width = len(button_fns) * button_dim + (1/6) * button_dim * (len(button_fns) + 1) + 10
-        super().__init__(position, master_w, width, master_h, height, tDict_override, color_override)
+        super().__init__(layout_uname, width, height, tDict_override, color_override, SELECTION)
         self.shape = shape
         self.button_dim = button_dim
         self.toggle = False
@@ -286,6 +343,10 @@ class selection(template):
         if self.shape == DASH_SHAPE:
             pass
 
+    def calculate_position(self, BtObject: button, xy_diff: tuple[int, int]) -> tuple[int, int]:
+        "<xy_diff> is absolute pixel size"
+        return pair_mul(pair_div_vec(pair_sum(BtObject.localPos, BtObject.master.localPos, BtObject.master.master.position, xy_diff), Window.res), (100, 100))
+
 class pallete_selector(template):
     def __init__(self, position, master_w, width, master_h, height, tDict_override=None, color_override=None):
         super().__init__(position, master_w, width, master_h, height, tDict_override, color_override)
@@ -295,3 +356,22 @@ class pallete_selector(template):
 
     def display(self, master_surf: pygame.Surface):
         pass
+
+FILE_M = 0
+PROJECT_M = 1
+WINDOW_M = 2
+
+class menu(template):
+    def __init__(self, layout_uname: str, width, height,
+                 tDict_override=None, color_override=None, const_id=None):
+        super().__init__(layout_uname, width, height, tDict_override, color_override, const_id)
+        self.menu_selected: int = FILE_M
+        self.select_m_panel: component = component((0, 0), 0, width // 5, height)
+        self.content_m_panel: component = component((width // 5 + 10, 0), 1, 4 * width // 5 - 10, height)
+        self.link_multi(self.select_m_panel, self.content_m_panel)
+
+        File_mBt = textBt((0, 0), FILE_M, self.select_m_panel.stats['w'], 30, "file", (4, 11))
+        Project_mBt = textBt((0, 30), PROJECT_M, self.select_m_panel.stats['w'], 30, "project", (4, 11))
+        Window_mBt = textBt((0, 60), WINDOW_M, self.select_m_panel.stats['w'], 30, "window", (4, 11))
+
+        self.select_m_panel.link_multi(File_mBt, Project_mBt, Window_mBt)

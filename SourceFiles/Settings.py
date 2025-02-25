@@ -45,6 +45,19 @@ def aux_set(inner_dict: dict, arg_list: list[str], value):
         return
     aux_set(inner_dict[arg_list.pop()], arg_list, value)
 
+def aux_add(inner_dict: dict, arg_list: list[str], value: tuple[str, dict | object]):
+    if len(arg_list) == 1:
+        object_name, item = value
+        inner_dict[arg_list.pop()][object_name] = item
+        return
+    aux_add(inner_dict[arg_list.pop()], arg_list, value)
+
+def aux_del(inner_dict: dict, arg_list: list[str]):
+    if len(arg_list) == 1:
+        del inner_dict[arg_list.pop()]
+        return
+    aux_del(inner_dict[arg_list.pop()], arg_list)
+
 #______Accesories______#
 def Get(setting_name, arg_list: list[str] | str | None): # -> Any
     if arg_list is None:
@@ -60,6 +73,30 @@ def Set(setting_name, arg_list: list[str] | str, value) -> None:
         return
     arg_list.reverse()
     aux_set(settings_dict[setting_name], arg_list, value)
+
+def Add(setting_name, arg_list: list[str] | str | None, value: tuple[str, dict | object]):
+    object_name, item = value
+    if arg_list is None:
+        settings_dict[setting_name][object_name] = item
+        save_specified_setting(setting_name)
+        return
+    if isinstance(arg_list, str):
+        settings_dict[setting_name][arg_list][object_name] = item
+        save_specified_setting(setting_name)
+        return
+    arg_list.reverse()
+    aux_add(settings_dict[setting_name], arg_list, value)
+    save_specified_setting(setting_name)
+
+def Del(setting_name, arg_list: list[str] | str):
+    if isinstance(arg_list, str):
+        del settings_dict[setting_name][arg_list]
+        save_specified_setting(setting_name)
+        return
+    arg_list.reverse()
+    aux_del(settings_dict[setting_name], arg_list)
+    save_specified_setting(setting_name)
+
 
 
 
@@ -97,3 +134,37 @@ def Show(setting_name: str | None) -> None:
 # }
 #
 # Where Color, fColor, tColor are [r, g, b] triples
+
+#______Layout_Pattern______#        (Found in Layout.json)
+#
+# <Template name> (e. g. "Attelier") : {
+#       "order"      : int
+#       "position"   : [x, y] (relative 0-100)
+#       "toggle"     : bool
+#       "components" : {
+#           "component_ord" : {       (int)
+#                 "type"     : int    (translation map of int <-> Component type is located in Constants.py)
+#                 "localPos" : [x, y] (relative to parent Template 0-100)  
+#             }
+#
+#       }
+# }
+
+#______Dev_Tools______#
+def dev_add_layout_template_atr(atr_name: str, value, affected_orders: list[int] = None):
+    for template_item in settings_dict["Layout"].values():
+        if affected_orders is None or template_item["order"] in affected_orders:
+            template_item[atr_name] = value
+    save_specified_setting("Layout")
+
+def dev_add_atr2all_comps(atr_name: str, value, affected_template_ords: list[int] = None):
+    for template_item in settings_dict["Layout"].values():
+        if affected_template_ords is not None and template_item["order"] not in affected_template_ords:
+            continue
+        for Component in template_item["components"].values():
+            Component[atr_name] = value
+    save_specified_setting("Layout")
+
+if __name__ == "__main__":
+    dev_add_atr2all_comps("components", {})
+    #dev_add_layout_template_atr("type", None)

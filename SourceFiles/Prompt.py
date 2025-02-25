@@ -4,6 +4,7 @@ from .Mouse import Mouse
 from .Button import button, text, icon, sliderBt
 from .Window import Window, Clock
 from .Meta import Updater
+from .ComF import img_preview_txt
 
 import pygame
 import sys, os
@@ -106,7 +107,9 @@ class prompt(template):
                 for bt_or_tx in Prompt.slide_panel.components:
                     del bt_or_tx
                 Prompt.currLoadDir = "."
+                Prompt.slide_panel.clean()
                 Prompt.attached_functions[0](Prompt)
+                Prompt.slide_panel.draw()
                 return True # The panel.component dict was changed from inside the onClick for-loop,
                             # So we have to signal it to break the cycle (Implement other soln?)
 
@@ -126,7 +129,11 @@ class prompt(template):
         directoryBt = button((10, 10), 3, 300, 30, "Gallery", (11, 10))
         directoryBt.attach(rootBtFn)
         buttons_text_tuples.append((directoryBt, None))
-                    
+
+        preview = icon((width - 90, 60), 4, 80, 80, "Icons/empty.png", (0, 0))
+        preview_txt = text((width - 90, 150), 5, 80, 15, "")
+        buttons_text_tuples.append((preview, preview_txt))
+
         attached_functions.append(prompt.load_prompt_graphics)
 
         Prompt = prompt(postition, Window.winX, width, Window.winY, height,
@@ -140,7 +147,7 @@ class prompt(template):
         self.doRetrieve = False
         self.currLoadDir: str = "."
         slider = sliderBt((10, 10), 0, 16, 50)
-        SlidePanel = slide_panel((0, 50), 4, self.stats['w'], self.stats['h'] - 100, self.stats['w'], (self.stats['h']), slider)
+        SlidePanel = slide_panel((0, 50), 6, self.stats['w'] - 100, self.stats['h'] - 100, self.stats['w'] - 100, (self.stats['h']), slider)
         self.slide_panel = SlidePanel
         self.panel.link_component(self.slide_panel)
         self.load_prompt_graphics()
@@ -156,6 +163,8 @@ class prompt(template):
                 self.info_buffer.append(self.currLoadDir + "\{}".format(BtObject.stats["txt"]))
             else:
                 self.info_buffer[0] = self.currLoadDir + "\{}".format(BtObject.stats["txt"])
+            self.panel.components[4].change(self.currLoadDir + "\{}".format(BtObject.stats["txt"]))
+            self.panel.components[5].change(img_preview_txt(self.panel.components[4].stats["ogxy"]))
             BtObject.draw()
             self.panel.draw()
 

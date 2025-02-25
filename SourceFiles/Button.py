@@ -21,7 +21,9 @@ class icon(component):
         super().__init__(localPos, order, width, height, colors)
         self.stats["fc"] = colors[1]
         self.stats["ip"] = icon_pos
-        self.icon_surf = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (width, height))
+        self.icon_surf = pygame.image.load(path).convert_alpha()
+        self.stats["ogxy"] = (self.icon_surf.get_width(), self.icon_surf.get_height())
+        self.icon_surf = pygame.transform.scale(self.icon_surf, (width, height))
         self.draw()
 
     def onClick(self, localMousePos):
@@ -30,6 +32,12 @@ class icon(component):
     def draw(self):
         super().draw()
         self.surf.blit(self.icon_surf, self.stats["ip"])
+    
+    def change(self, path: str):
+        self.icon_surf = pygame.image.load(path).convert_alpha()
+        self.stats["ogxy"] = (self.icon_surf.get_width(), self.icon_surf.get_height())
+        self.icon_surf = pygame.transform.scale(self.icon_surf, (self.stats['w'], self.stats['h']))
+        self.draw()
 
 class text(component):
     def __init__(self, localPos, order, width, height, text, textPos = (0, 0), color_override = None) -> None:
@@ -49,6 +57,11 @@ class text(component):
     def draw(self):
         super().draw()
         self.surf.blit(self.txt_surf, self.stats["txtp"])
+    
+    def change(self, text: str):
+        self.stats["txt"] = text
+        self.txt_surf = make_word(self.stats["txt"], self.stats["tc"])
+        self.draw()
 
 
 
@@ -354,6 +367,76 @@ class popupBt(button):
             if not self.toggle:
                 self.subject.toggle = False
 
+class selectBt(button):
+    def __init__(self, localPos, order, width, height, text="", textPos=(0, 0), color_override=None, attachFn=None):
+        super().__init__(localPos, order, width, height, text, textPos, color_override, attachFn)
+        Updater.Add(self)
+        self.toggle = False
+        self.subject: template | None = None
+        self.initial_size: tuple[int, int] | None = None
+        self.final_size: tuple[int, int] | None = None
+        self.isLerping = False
+        self.isClosing = False
+        self.lerpSpeed = 1 / 30
+        self.complete = 0
+
+    def Update(self):
+        if not self.isLerping:
+            return
+        
+        self.complete += self.lerpSpeed # Change to use timeDelta
+        if self.complete > 1:
+            self.complete = 1
+
+        if not self.isClosing:
+            x_f, y_f = self.final_size
+            x_o, y_o = self.initial_size
+        if self.isClosing:
+            x_f, y_f = self.initial_size
+            x_o, y_o = self.final_size
+
+        self.subject.stats['w'] = Lerp(x_o, x_f, self.complete)
+        self.subject.stats['h'] = Lerp(y_o, y_f, self.complete)
+
+        if self.subject.stats['w'] == x_f and self.subject.stats['h'] == y_f:
+            self.isLerping = False
+            self.complete = 0
+            if self.isClosing:
+                self.subject.toggle = False
+                self.isClosing = False
+            else:
+                self.isClosing = True
+        
+        self.subject.renew_surf()
+
+    def Bind(self, subject: template, dimensions: tuple[int, int, int, int]):
+        self.subject = subject
+        x_o, y_o, x_f, y_f = dimensions
+        self.initial_size = (x_o, y_o)
+        self.final_size = (x_f, y_f)
+    
+    def onClick(self, localMousePos):
+        self.isClicked = True
+        self.stats["f"] = not self.stats["f"]
+
+        left, _, right = Mouse.state["LWR"]
+        if right:
+            self.isLerping = True
+            if not self.isClosing:
+                self.subject.toggle = True
+        
+        if left:
+            self.toggle = not self.toggle
+            self.subject.components[0].components[self.subject.selected_bt].onClick(localMousePos)
+            if self.attached is not None:
+                self.attached(self)
+        
+        self.draw()
+        self.master.draw()
+
+
+
+
 class sliderBt(button):
     def __init__(self, localPos, order, width, height, horizontal = False, color_override = None):
         super().__init__(localPos, order, width, height, None, None, None, color_override)
@@ -364,7 +447,6 @@ class sliderBt(button):
         self.difference = 0
 
     def draw(self):
-        x, y = self.localPos
         super().draw()
 
     def aux(self) -> int:

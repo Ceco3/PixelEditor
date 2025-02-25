@@ -1,7 +1,8 @@
 from .Mouse import Mouse
-from .ComF import cmax
-from .Color import color_rgb
+from .ComF import cmax, pair_mul, pair_div
+from .Window import Window
 from . import Settings
+from . import Constants
 
 import pygame
 
@@ -18,7 +19,7 @@ def SwitchIn_tDict(key_1, key_2):
 
 
 class component:
-    def __init__(self, localPos, order, width, height, color_override = None) -> None:
+    def __init__(self, localPos, order, width, height, color_override = None, type_id = Constants.GENERIC) -> None:
         self.localPos = localPos
         self.order = order
         self.isClicked = False
@@ -28,7 +29,8 @@ class component:
             "w" : width,
             "h" : height,
             "c" : colors[0],
-            "s" : False
+            "s" : False, # I dont know what this is anymore, maybe shade? or show?
+            "t" : type_id
         }
         self.components: dict[int, component] = {}
         self.master = None
@@ -123,28 +125,37 @@ class slide_panel(component):
                 continue
             self.surf.blit(Component.surf, self.adjust(Component.localPos))
 
+    def clean(self):
+        "deletes all components but the slider"
+        for order in list(self.components.keys()):
+            if order == 0:
+                continue
+            del self.components[order]
+
     def onClick(self, localMousePos):
         return super().onClick(self.adjust_plus(localMousePos))
 
 
 class template:
-    def __init__(self, position, master_w, width, master_h, height, tDict_override = None, color_override = None) -> None:
-        self.toggle = True
+    def __init__(self, layout_uname: str | None, width, height,
+                tDict_override = None, color_override = None, type_id = Constants.GENERIC) -> None:
+        self.toggle = Settings.Get("Layout", [layout_uname, "toggle"])
         if tDict_override is None:
             tDict_override = cmax(list(tDict.keys())) + 1
         tDict[tDict_override] = self
         self.order = tDict_override
-        self.position: tuple[int, int] = position
+        self.position: tuple[int, int] = pair_mul(pair_div(Settings.Get("Layout", [layout_uname, "position"]), 100), Window.res)
         self.isClicked = False
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
         colors = self.get_colors(color_override)
         self.stats = {
-            "mw" : master_w,
             "w" : width,
-            "mh" : master_h,
             "h" : height,
             "c" : colors[0],
             "fc" : colors[1],
+            "lyun" : layout_uname,
+            "te" : False, # terminateOnExit
+            "t" : type_id,
         }
         self.components: dict[int, component] = {}
 

@@ -12,17 +12,20 @@ import pygame
 import copy
 
 class layer:
-    def __init__(self, order, width, pix_w, height, pix_h) -> None:
+    def __init__(self, order, width, pix_w, height, pix_h, master: 'canvas') -> None:
         Updater.Add(self)
         self.order = order
         self.width = width
         self.height = height
         self.pix_w = pix_w
         self.pix_h = pix_h
+        self.master = master
         self.name = "Layer " + str(order)
         self.grid: list[list[color_rgba]] = []
         self.surf = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-        self.stats = {}
+        self.stats = {
+            'bw' : False
+        }
         self.color_data: dict[tuple, int] = { # This does not work for the 0 layer
             "size": pix_w * pix_h,
             (0, 0, 0, 0): pix_w * pix_h
@@ -74,13 +77,16 @@ class layer:
     def draw(self):
         for y in range(self.pix_h):
             for x in range(self.pix_w):
-                if (x, y) in self.lasso_volume:
-                    pygame.draw.rect(self.surf, (self.grid[y][x] + Lasso.select_volume_color).toTuple(),
-                                      pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h,
-                                                  self.width / self.pix_w, self.height / self.pix_h))
+                if self.stats['bw'] or self.master.stats['bw']:
+                    color = self.grid[y][x].copy()
+                    grayScale = int(color.r * 0.299 + color.g * 0.587 + color.b * 0.114)
+                    color.r = grayScale; color.g = grayScale; color.b = grayScale
+                elif (x, y) in self.lasso_volume:
+                    color = self.grid[y][x] + Lasso.select_volume_color
                 else:
-                    pygame.draw.rect(self.surf, self.grid[y][x].toTuple(), pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h,
-                                                                                    self.width / self.pix_w, self.height / self.pix_h))
+                    color = self.grid[y][x]
+                pygame.draw.rect(self.surf, color.toTuple(), pygame.Rect(x * self.width / self.pix_w, y * self.height / self.pix_h,
+                                                                                self.width / self.pix_w, self.height / self.pix_h))
 
     def change_pixel(self, pixelPos, newColor: color_rgba):
         "PixelPos is in (x, y) form x,y are ints"
@@ -107,6 +113,7 @@ class layer:
                     self.color_data[color_xy] = 0
                 self.color_data[color_xy] += 1
 
+    # Debug
     def show(self):
         for i in range(self.pix_h):
             for j in range(self.pix_w):
@@ -114,10 +121,12 @@ class layer:
 
 
 class canvas(template):
-    def __init__(self, position, width, height, pix_dim, tDict_override = None, color_override = None) -> None:
-        super().__init__(position, Window.winX, width, Window.winY, height, tDict_override, color_override=[[0, 0, 0], [50, 50, 50]])
+    def __init__(self, layout_uname: str, width, height, pix_dim,
+                  tDict_override = None, color_override = None) -> None:
+        super().__init__(layout_uname, width, height, tDict_override, color_override=[[0, 0, 0], [50, 50, 50]])
         self.pix_w = pix_dim[0]
         self.pix_h = pix_dim[1]
+        self.stats['bw'] = False # Black and White
         self.lDict: dict[int, layer] = {}
 
         Registry.Write("Canvas", self)
@@ -139,7 +148,7 @@ class canvas(template):
     def new_layer(self):
         keys = list(self.lDict.keys())
         new_layer_order = cmax(keys) + 1
-        self.lDict[new_layer_order] = layer(new_layer_order, self.stats['w'], self.pix_w, self.stats['h'], self.pix_h)
+        self.lDict[new_layer_order] = layer(new_layer_order, self.stats['w'], self.pix_w, self.stats['h'], self.pix_h, self)
         self.lDict[new_layer_order].draw()
         return new_layer_order
 
@@ -150,11 +159,6 @@ class canvas(template):
             if key > layer_order:
                 self.lDict[key - 1] = self.lDict[key]
                 del self.lDict[key]
-
-    def create_frame(self):
-        returnDict = copy.deepcopy(self.lDict)
-        del returnDict[0]
-        return returnDict
 
     def display(self, screen: pygame.Surface):
         highest = max(list(self.lDict.keys()))
@@ -184,7 +188,7 @@ class canvas(template):
         #self.lDict[mouse.layer_selected].change_pixel(self.transform(mouse.position), mouse.color)
         lyr_mngr.update()
 
-Canvas = canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), 500, 500, Settings.Get("Project", "CanvasMeta"))
+Canvas = canvas("Canvas", 500, 500, Settings.Get("Project", "CanvasMeta"))
 
 
 def new_canvas(position: tuple[int, int], width, height, pix_dim: tuple[int, int], tDict_override = None, color_override = None):
@@ -279,10 +283,25 @@ class pencil(tool):
         super().__init__()
 
     def onUse(self, transformed_position, tDict = None, screen = None):
-        if Mouse.state["LWR"][2]:
-            Canvas.lDict[Mouse.layer_selected].change_pixel(Canvas.transform(Mouse.position), color_rgba())
+        if Mouse.pix_width == 1:
+            if Mouse.state["LWR"][2]:
+                Canvas.lDict[Mouse.layer_selected].change_pixel(transformed_position, color_rgba())
+                return
+            Canvas.lDict[Mouse.layer_selected].change_pixel(transformed_position, Mouse.color)
             return
-        Canvas.lDict[Mouse.layer_selected].change_pixel(transformed_position, Mouse.color)
+
+        x_i, y_i = transformed_position
+        x_o, y_o = x_i - Mouse.pix_width // 2, y_i - Mouse.pix_width // 2
+        for d_x in range(Mouse.pix_width):
+            for d_y in range(Mouse.pix_width):
+                if x_o + d_x < 0 or x_o + d_x >= Canvas.pix_w:
+                    continue
+                if y_o + d_y < 0 or y_o + d_y >= Canvas.pix_h:
+                    continue
+                if Mouse.state["LWR"][2]:
+                    Canvas.lDict[Mouse.layer_selected].change_pixel((x_o + d_x, y_o + d_y), color_rgba())
+                    continue
+                Canvas.lDict[Mouse.layer_selected].change_pixel((x_o + d_x, y_o + d_y), Mouse.color)
 
 Pencil = pencil()
 
@@ -306,6 +325,7 @@ class bucket(tool):
             inactive.append(active[0])
             
             Canvas.lDict[Mouse.layer_selected].change_pixel((x, y), Mouse.color)
+            Canvas.lDict[Mouse.layer_selected].draw()
             for index in range(max(list(tDict.keys())) + 1):
                 if not tDict[index].toggle:
                     continue
