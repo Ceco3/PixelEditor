@@ -4,9 +4,10 @@ import sys
 pygame.init()
 
 from SourceFiles import Canvas
-from SourceFiles.Canvas import Pencil, Bucket, Lasso, rescale_canvas
+from SourceFiles.Canvas import Pencil, Bucket, Lasso, Taster, Shader
 from SourceFiles.Color import color_rgba, color_rgb
-from SourceFiles.Tapestry import color_picker, layer_mngr, frame_mngr, AUTOSAVE, AUTOSAVE_EV, selection, load_pallete, load
+from SourceFiles.Tapestry import color_picker, shade_picker, thick_picker, layer_mngr, frame_mngr, AUTOSAVE, AUTOSAVE_EV, \
+    selection, load_pallete, load, BUILD, LOAD, file, radar, lookup_mngr
 from SourceFiles.Template import template, component, slide_panel, tDict, SwitchIn_tDict
 from SourceFiles.Meta import Updater, Registry
 from SourceFiles.Mouse import Mouse
@@ -15,19 +16,25 @@ from SourceFiles import Settings
 from SourceFiles.Button import toolBt, rollBt, button, toggleBt, textBt, text, popupBt, sliderBt, icon
 from SourceFiles.ComF import validate_string, pair_sum
 from SourceFiles.Prompt import prompt
-from SourceFiles.Functions import BUILD, LOAD, NEWLAYER, DELLAYER, PLAYANIM, \
-    SaveBtFn, ExitBtFn, SaveStngsBtFn, LoadBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
+from SourceFiles.Functions import NEWLAYER, DELLAYER, PLAYANIM, \
+    ExitBtFn, SaveStngsBtFn, NewLBtFn, DelLBtFn, VisBtFn, \
     PlusFrmBtFn, SaveAnimBtFn, SetSpeedMetaFn, PlayBtFn, ReflectX, ReflectY, AvalanadiaBtFn
 from SourceFiles.BootF import build_canvas
 
 Pallete = load_pallete("Testing")
 Pallete.localPos = (10, 10)
+Registry.Write("Pallete", Pallete)
 
 Color_picker = color_picker((10, 170), 1, 230, 130, Pallete)
+Registry.Write("ColorPicker", Color_picker)
 
 Registry.Write("Char", "")
 
 Settings.Set("Project", "Name", "DefaultName")
+
+
+#___Radar___#
+Radar = radar((Window.winX / 3 - 20, Window.winY / 4 - 30), Window.winX, 50, Window.winY, 25)
 
 #___SETTINGS___#
 Settings_ = template((400, 150), Window.winX, 150, Window.winY, 60)
@@ -56,7 +63,7 @@ def CanvasXBtFn(CanvasXBt: textBt):
         return
     dimensions[0] = int(CanvasXBt.stats["txt"])
     Settings.Set("Project", "CanvasMeta", dimensions)
-    rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
+    Canvas.Canvas.rescale((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
 def CanvasYBtFn(CanvasYBt: textBt):
     dimensions = Settings.Get("Project", "CanvasMeta")
     if not validate_string(CanvasYBt.stats["txt"]):
@@ -64,20 +71,25 @@ def CanvasYBtFn(CanvasYBt: textBt):
         return
     dimensions[1] = int(CanvasYBt.stats["txt"])
     Settings.Set("Project", "CanvasMeta", dimensions)
-    rescale_canvas((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
+    Canvas.Canvas.rescale((Window.winX / 3 + 50, Window.winY / 4 - 30), Window.winX, 500, Window.winY, 500, dimensions)
 CanvasXBt.attach(CanvasXBtFn)
 CanvasYBt.attach(CanvasYBtFn)
 SaveStngsBt = button((720, 370), 8, 60, 30, "save", (11, 10), attachFn=SaveStngsBtFn)
 Settings_.components[0].link_multi(NameBt, NameTxt, SaveDirBt, SaveDirTxt, CanvasXBt, CanvasXBtTxt,
                                    CanvasYBt, CanvasYBtTxt, SaveStngsBt)
 
+#___File___#
+File = file((400, 150), Window.winX, 150, Window.winY, 60)
+Registry.Write("File", File)
 
 #___CANVAS___#
 LyrM = layer_mngr([10, 310], 2, 230, 200)
 Registry.Write("LayerManager", LyrM)
-SaveBt = button((10, 10), 0, 60, 30, "save", textPos = (11, 10), attachFn=SaveBtFn)
-ExitBt = button((80, 10), 1, 60, 30, "exit",textPos = (11, 10), attachFn=ExitBtFn)
-LoadBt = button((10, 55), 2, 60, 30, "load", textPos = (11, 10), attachFn=LoadBtFn)
+FileBt = popupBt((10, 10), 0, 60, 30, 'file', textPos = (11, 10))
+FileBt.SetValues(File, (150, 60, 770, 400))
+# SaveBt = button((10, 10), 0, 60, 30, "save", textPos = (11, 10), attachFn=SaveBtFn)
+ExitBt = button((80, 10), 1, 60, 30, "exit", textPos = (11, 10), attachFn=ExitBtFn)
+# LoadBt = button((10, 55), 2, 60, 30, "load", textPos = (11, 10), attachFn=LoadBtFn)
 NewLBt = button((10, 160), -1, 60, 30, "new", textPos = (15, 10), attachFn=NewLBtFn)
 DelLBt = button((80, 160), -2, 60, 30, "del", textPos = (15, 10), attachFn=DelLBtFn)
 
@@ -99,16 +111,25 @@ AvaBt.loadIcon("Avalandia.png")
 ReflectBt = popupBt((10, 70), 3, 50, 50, color_override=Garage_Colors)
 ReflectBt.loadIcon("Reflect.png")
 LassoBt = toolBt((190, 10), 5, 50, 50, Lasso, color_override=Garage_Colors)
-LassoBt.loadIcon("Lasso.png")
+LassoBt.loadIcon('Lasso.png')
+TasterBt = toolBt((190, 70), 6, 50, 50, Taster, color_override=Garage_Colors)
+TasterBt.loadIcon('Taster.png')
+ShaderBt = toolBt((130, 70), 7, 50, 50, Shader, color_override=Garage_Colors)
+ShaderBt.loadIcon('Shade.png')
 
 Garage.new_component((10, 10), 280, 300)
-Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, AvaBt, ReflectBt, LassoBt)
+Garage.components[0].link_multi(BucketBt, PencilBt, VisBt, AvaBt, ReflectBt, LassoBt, TasterBt, ShaderBt)
+
+Thick_picker = thick_picker((10, 320), 1, 280, 50)
+Shader_picker = shade_picker((10, 380), 2, 280, 50)
+Garage.link_multi(Thick_picker, Shader_picker)
 
 Polish = template((450, 20), Window.winX, 700, Window.winY, 100)
 Polish.new_component((0, 0), 200, 100)
-Polish.components[0].link_component(SaveBt)
+#Polish.components[0].link_component(SaveBt)
+Polish.components[0].link_component(FileBt)
 Polish.components[0].link_component(ExitBt)
-Polish.components[0].link_component(LoadBt)
+#Polish.components[0].link_component(LoadBt)
 OptionsSlide: component = Polish.new_component((500, 0), 200, 100)
 StngsBt = popupBt((150, 10), 0, 40, 40)
 StngsBt.SetValues(Settings_, (150, 60, 770, 400))
@@ -134,6 +155,9 @@ FrmSlider = sliderBt((10, 120), 0, 50, 20, True)
 FrmM = frame_mngr((80, 10), 1, 800, 160, 2000, 160, FrmSlider, True)
 Registry.Write("FrameManager", FrmM)
 Animator.link_component(FrmM)
+LkupM = lookup_mngr((890, 10), 2, 300, 160)
+Animator.link_component(LkupM)
+
 
 #___Selections___#
 RefSelection = selection(pair_sum(ReflectBt.localPos, ReflectBt.master.localPos, ReflectBt.master.master.position, (60, -15)),
@@ -147,13 +171,13 @@ AnimSpeedSlctn = selection(pair_sum(PlayBt.localPos, PlayBt.master.localPos, Pla
 PlayBt.SetValues(AnimSpeedSlctn, (7, 15, AnimSpeedSlctn.stats['w'], AnimSpeedSlctn.stats['h']))
 
 #___Order_tDict_Here___#
-SwitchIn_tDict(1, 4)
+# SwitchIn_tDict(1, 4)
 
 
 #___InitStuff___#
 Mouse.tool = Pencil
 pygame.time.set_timer(AUTOSAVE_EV, Settings.Get("User", "AutoSave"))
-bckgrnd = pygame.transform.scale(pygame.image.load("Gallery/background.jpg").convert(), (Window.winX, Window.winY))
+bckgrnd = pygame.transform.scale(pygame.image.load('Icons/background.jpg').convert(), (Window.winX, Window.winY))
 
 #___MAINLOOP___#
 while True:

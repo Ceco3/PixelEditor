@@ -4,7 +4,6 @@ from .Mouse import Mouse
 from .Button import button, text, icon, sliderBt
 from .Window import Window, Clock
 from .Meta import Updater
-from .ComF import img_preview_txt
 
 import pygame
 import sys, os
@@ -94,22 +93,35 @@ class prompt(template):
 
         def LoadPalleteFn(BtObject: button):
             if Prompt.info_buffer != []:
-                Prompt.kill()
-                Prompt.doRetrieve = True
                 if len(Prompt.info_buffer) == 1:
                     Prompt.info_buffer.append(True)
                 else:
-                    Prompt.info_buffer[1] = True
+                    Prompt.info_buffer[1] = not Prompt.info_buffer[1]
+            else:
+                Prompt.info_buffer.append(None)
+                Prompt.info_buffer.append(True)
+
+        def LoadAnimFn(BtObject: button):
+            for item in os.listdir(Prompt.currLoadDir):
+                if '.png' not in item:
+                    return
+            Prompt.kill()
+            Prompt.doRetrieve = True
+            if Prompt.info_buffer == []:
+                Prompt.info_buffer.append(Prompt.currLoadDir)
+                Prompt.info_buffer.append(False)
+                Prompt.info_buffer.append(True)
+            else:
+                Prompt.info_buffer[0] = Prompt.currLoadDir
+                Prompt.info_buffer.append(True)
 
         def rootBtFn(BtObject: button):
-            left, _, right = Mouse.state["LWR"]
+            left, _, right = Mouse.state['LWR']
             if right:
                 for bt_or_tx in Prompt.slide_panel.components:
                     del bt_or_tx
                 Prompt.currLoadDir = "."
-                Prompt.slide_panel.clean()
                 Prompt.attached_functions[0](Prompt)
-                Prompt.slide_panel.draw()
                 return True # The panel.component dict was changed from inside the onClick for-loop,
                             # So we have to signal it to break the cycle (Implement other soln?)
 
@@ -121,19 +133,21 @@ class prompt(template):
         LoadBt.attach(LoadFn)
         buttons_text_tuples.append((LoadBt, None))
 
+        # Loads the whole animation
+        LoadAnimBt = button((width - 200, height - 40), 2, 90, 30, 'lanim', (11, 10))
+        LoadAnimBt.attach(LoadAnimFn)
+        buttons_text_tuples.append((LoadAnimBt, None))
+
         # Loads the picture along with its pallete scheme
-        LoadPalleteBt = button((width - 200, height - 40), 2, 90, 30, "pload", (11, 10))
+        LoadPalleteBt = button((width - 240, height - 40), 3, 30, 30)
+        LoadPalleteBt.loadIcon('Pallete.png')
         LoadPalleteBt.attach(LoadPalleteFn)
         buttons_text_tuples.append((LoadPalleteBt, None))
 
-        directoryBt = button((10, 10), 3, 300, 30, "Gallery", (11, 10))
+        directoryBt = button((10, 10), 4, 300, 30, "Gallery", (11, 10))
         directoryBt.attach(rootBtFn)
         buttons_text_tuples.append((directoryBt, None))
-
-        preview = icon((width - 90, 60), 4, 80, 80, "Icons/empty.png", (0, 0))
-        preview_txt = text((width - 90, 150), 5, 80, 15, "")
-        buttons_text_tuples.append((preview, preview_txt))
-
+                    
         attached_functions.append(prompt.load_prompt_graphics)
 
         Prompt = prompt(postition, Window.winX, width, Window.winY, height,
@@ -147,7 +161,7 @@ class prompt(template):
         self.doRetrieve = False
         self.currLoadDir: str = "."
         slider = sliderBt((10, 10), 0, 16, 50)
-        SlidePanel = slide_panel((0, 50), 6, self.stats['w'] - 100, self.stats['h'] - 100, self.stats['w'] - 100, (self.stats['h']), slider)
+        SlidePanel = slide_panel((0, 50), 5, self.stats['w'], self.stats['h'] - 100, self.stats['w'], (self.stats['h']), slider)
         self.slide_panel = SlidePanel
         self.panel.link_component(self.slide_panel)
         self.load_prompt_graphics()
@@ -163,8 +177,6 @@ class prompt(template):
                 self.info_buffer.append(self.currLoadDir + "\{}".format(BtObject.stats["txt"]))
             else:
                 self.info_buffer[0] = self.currLoadDir + "\{}".format(BtObject.stats["txt"])
-            self.panel.components[4].change(self.currLoadDir + "\{}".format(BtObject.stats["txt"]))
-            self.panel.components[5].change(img_preview_txt(self.panel.components[4].stats["ogxy"]))
             BtObject.draw()
             self.panel.draw()
 

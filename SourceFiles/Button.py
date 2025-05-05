@@ -21,9 +21,7 @@ class icon(component):
         super().__init__(localPos, order, width, height, colors)
         self.stats["fc"] = colors[1]
         self.stats["ip"] = icon_pos
-        self.icon_surf = pygame.image.load(path).convert_alpha()
-        self.stats["ogxy"] = (self.icon_surf.get_width(), self.icon_surf.get_height())
-        self.icon_surf = pygame.transform.scale(self.icon_surf, (width, height))
+        self.icon_surf = pygame.transform.scale(pygame.image.load(path).convert_alpha(), (width, height))
         self.draw()
 
     def onClick(self, localMousePos):
@@ -32,12 +30,6 @@ class icon(component):
     def draw(self):
         super().draw()
         self.surf.blit(self.icon_surf, self.stats["ip"])
-    
-    def change(self, path: str):
-        self.icon_surf = pygame.image.load(path).convert_alpha()
-        self.stats["ogxy"] = (self.icon_surf.get_width(), self.icon_surf.get_height())
-        self.icon_surf = pygame.transform.scale(self.icon_surf, (self.stats['w'], self.stats['h']))
-        self.draw()
 
 class text(component):
     def __init__(self, localPos, order, width, height, text, textPos = (0, 0), color_override = None) -> None:
@@ -46,23 +38,21 @@ class text(component):
         else:
             colors = color_override
         super().__init__(localPos, order, width, height, colors)
-        self.stats["tc"] = colors[1]
+        self.stats["tc"] = colors[1] # text-color
         self.stats["txt"] = text
         self.stats["txtp"] = textPos
-        self.txt_surf = make_word(self.stats["txt"], self.stats["tc"])
+        self.txt_surf = make_word(self.stats['txt'], self.stats['tc'])
 
     def onClick(self, localMousePos):
         return
-        
+
     def draw(self):
         super().draw()
         self.surf.blit(self.txt_surf, self.stats["txtp"])
-    
-    def change(self, text: str):
-        self.stats["txt"] = text
-        self.txt_surf = make_word(self.stats["txt"], self.stats["tc"])
-        self.draw()
 
+    def renew_txt(self, new_txt: str):
+        self.txt_surf = make_word(new_txt, self.stats['tc'])
+        self.draw()
 
 
 
@@ -145,6 +135,7 @@ class lyrBt(button):
         super().__init__(localPos, order, width, height, text, textPos, self.get_colors(color_override))
         self.stats["f"] = True
         self.overlaySurf = pygame.Surface((self.stats["w"], self.stats["h"]), pygame.SRCALPHA, 32)
+        self.heldOffset: tuple[int, int] = (0, 0)
 
     def draw(self, color_data):
         most = cmax(list(self.components.keys()))
@@ -160,8 +151,19 @@ class lyrBt(button):
             self.highlight()
 
     def onClick(self, localMousePos):
+        self.isClicked = True
         self.stats["f"] = not self.stats["f"]
         Mouse.layer_selected = self.order
+        Mouse.layerBtHeld = self.order
+        self.heldOffset = (0, Mouse.position[1] - self.localPos[1] - self.master.localPos[1] - self.master.master.position[1])
+    
+    def onRelease(self):
+        Mouse.layerBtHeld = None
+        Mouse.layer_selected = self.order
+        self.heldOffset = (0, 0)
+        self.localPos = (5, (self.order - 1) * (self.master.stats["lyrBh"] + 1) + 5)
+        self.master.draw()
+        super().onRelease()
 
 class knob(button):
     def __init__(self, localPos, order, width, height, text="", textPos=(0, 0), color_override=None, attachFn=None):
@@ -182,6 +184,10 @@ class knob(button):
         self.value = Clamp(0, 1, x / self.stats['w'])
         self.draw()
         self.master.draw()
+
+    def reset(self, value = 0.5):
+        self.value = value
+        self.draw()
 
     def draw(self):
         self.surf.fill(self.master.stats['c'])
@@ -235,6 +241,7 @@ class frmBt(button):
             return True
         self.localPos = self.og_pos
         switch_canvas(self.bound_canvas)
+        Mouse.layer_selected = max(self.bound_canvas.lDict.keys())
         self.update_alpha()
         self.draw()
         self.master.draw()
@@ -323,7 +330,7 @@ class popupBt(button):
         self.isClicked = True
         self.stats["f"] = not self.stats["f"]
         left, _, right = Mouse.state["LWR"]
-        if left and Registry.Read("Settings") != self.subject and self.attached is None:
+        if left and Registry.Read("Settings") != self.subject and Registry.Read("File") != self.subject and self.attached is None:
             self.subject.components[0].components[self.subject.selected_bt].onClick(localMousePos)
             return
         if left and self.attached is not None:
@@ -367,76 +374,6 @@ class popupBt(button):
             if not self.toggle:
                 self.subject.toggle = False
 
-class selectBt(button):
-    def __init__(self, localPos, order, width, height, text="", textPos=(0, 0), color_override=None, attachFn=None):
-        super().__init__(localPos, order, width, height, text, textPos, color_override, attachFn)
-        Updater.Add(self)
-        self.toggle = False
-        self.subject: template | None = None
-        self.initial_size: tuple[int, int] | None = None
-        self.final_size: tuple[int, int] | None = None
-        self.isLerping = False
-        self.isClosing = False
-        self.lerpSpeed = 1 / 30
-        self.complete = 0
-
-    def Update(self):
-        if not self.isLerping:
-            return
-        
-        self.complete += self.lerpSpeed # Change to use timeDelta
-        if self.complete > 1:
-            self.complete = 1
-
-        if not self.isClosing:
-            x_f, y_f = self.final_size
-            x_o, y_o = self.initial_size
-        if self.isClosing:
-            x_f, y_f = self.initial_size
-            x_o, y_o = self.final_size
-
-        self.subject.stats['w'] = Lerp(x_o, x_f, self.complete)
-        self.subject.stats['h'] = Lerp(y_o, y_f, self.complete)
-
-        if self.subject.stats['w'] == x_f and self.subject.stats['h'] == y_f:
-            self.isLerping = False
-            self.complete = 0
-            if self.isClosing:
-                self.subject.toggle = False
-                self.isClosing = False
-            else:
-                self.isClosing = True
-        
-        self.subject.renew_surf()
-
-    def Bind(self, subject: template, dimensions: tuple[int, int, int, int]):
-        self.subject = subject
-        x_o, y_o, x_f, y_f = dimensions
-        self.initial_size = (x_o, y_o)
-        self.final_size = (x_f, y_f)
-    
-    def onClick(self, localMousePos):
-        self.isClicked = True
-        self.stats["f"] = not self.stats["f"]
-
-        left, _, right = Mouse.state["LWR"]
-        if right:
-            self.isLerping = True
-            if not self.isClosing:
-                self.subject.toggle = True
-        
-        if left:
-            self.toggle = not self.toggle
-            self.subject.components[0].components[self.subject.selected_bt].onClick(localMousePos)
-            if self.attached is not None:
-                self.attached(self)
-        
-        self.draw()
-        self.master.draw()
-
-
-
-
 class sliderBt(button):
     def __init__(self, localPos, order, width, height, horizontal = False, color_override = None):
         super().__init__(localPos, order, width, height, None, None, None, color_override)
@@ -447,6 +384,7 @@ class sliderBt(button):
         self.difference = 0
 
     def draw(self):
+        x, y = self.localPos
         super().draw()
 
     def aux(self) -> int:

@@ -26,9 +26,7 @@ def char_converter(char: str):
             return "'"
         case " ":
             return ","
-        case ':':
-            return '$'
-
+    
     return char
 
 def count_pixels(line):
